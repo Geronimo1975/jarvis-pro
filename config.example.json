@@ -1,0 +1,119 @@
+{
+  "name": "SECOND BRAIN",
+  "logo": "",
+  "vault": "/absolute/path/to/your/markdown/vault",
+  "_comment": "Copy this file to config.json and fill it in. config.json stays on your machine — it is never served to the browser and is excluded from the shareable zip. Do NOT paste these keys into chat.",
+  "model": {
+    "_comment": "The 'brain' that answers from your notes. EITHER native Claude (provider 'anthropic', model 'claude-opus-4-8', leave base_url empty) OR any OpenAI-compatible endpoint such as GLM 5.2 via OpenRouter/Z.ai (set base_url to the provider's /v1 URL and model to its slug). Get the exact base_url + slug from your provider's docs.",
+    "provider": "anthropic",
+    "base_url": "",
+    "api_key": "PUT-YOUR-MODEL-API-KEY-HERE",
+    "model": "claude-opus-4-8",
+    "computer_tool": "computer_20251124",
+    "computer_beta": "computer-use-2025-11-24"
+  },
+  "elevenlabs": {
+    "_comment": "OPTIONAL premium voice. LEAVE THESE EMPTY and Jarvis speaks in your browser's own built-in voice — free, no key, works out of the box. To upgrade to the cinematic 'Jarvis' voice, paste your OWN ElevenLabs api_key (secret) + a voice_id. The voice_id is safe to share; the api_key is not.",
+    "api_key": "",
+    "voice_id": "",
+    "model_id": "eleven_turbo_v2_5"
+  },
+  "agent": {
+    "_comment": "Structural safety for /agent DRAFT mode — tools the agent may NOT use until you confirm an action. Wildcards match MCP tool names. These defaults let a draft read/research but never send, post, delete, spend, write, shell, or delegate. Override only if you know what you're doing.",
+    "disallow": [
+      "Bash",
+      "Write",
+      "Edit",
+      "Task",
+      "mcp__*send*",
+      "mcp__*post*",
+      "mcp__*reply*",
+      "mcp__*delete*",
+      "mcp__*publish*",
+      "mcp__*deploy*",
+      "mcp__*spend*",
+      "mcp__*pay*",
+      "mcp__*buy*"
+    ]
+  },
+  "telephony": {
+    "_comment": "Retell AI (retellai.com): buy a number, create agents from retell-agent-prompts.md, paste ids. 'from'=your Retell number, 'callback'=YOUR cell (E.164). 'pin'=hotline code for calling from other phones.",
+    "provider": "retell",
+    "api_key": "PUT-YOUR-RETELL-API-KEY-HERE",
+    "from": "+1XXXXXXXXXX",
+    "callback": "+1YOURCELLNUMBER",
+    "pin": "4321",
+    "agent_id": "PUT-BOOKING-AGENT-ID",
+    "agents": {
+      "booking": "PUT-BOOKING-AGENT-ID",
+      "inquiry": "PUT-INQUIRY-AGENT-ID",
+      "general": "PUT-GENERAL-AGENT-ID"
+    }
+  },
+  "models": {
+    "_comment": "OPTIONAL — extra named brains for the 'Jarvis, try on <name>' hot-swap. Built-in spoken names already work: opus, sonnet, haiku, fable (Claude Fable 5.1), and 'back to default'. Entries here inherit the top-level model block; entries with a base_url and an empty api_key automatically use the openrouter key below. Each named brain gets its own curated swap line. Swaps are runtime-only and reset on restart.",
+    "glm": {
+      "provider": "openrouter",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key": "",
+      "model": "z-ai/glm-5.2"
+    },
+    "astra": {
+      "provider": "openrouter",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key": "",
+      "model": "openai/gpt-6-astra"
+    }
+  },
+  "openrouter": {
+    "_comment": "OPTIONAL but the magic trick — ONE key, EVERY model. With this set, 'Jarvis, try on grok / gpt / gemini / deepseek / llama / kimi…' fuzzy-matches the LIVE OpenRouter catalogue (newest match wins) and swaps brains on the spot. Get a key at openrouter.ai/keys.",
+    "api_key": "PUT-YOUR-OPENROUTER-KEY-HERE"
+  },
+  "openai": {
+    "_comment": "OPTIONAL — GPT Realtime as a second live-voice engine for the 📡 button (true speech-to-speech, sub-second). GPT is only ears+mouth: the ask_jarvis tool routes every knowledge question back to this server, so Claude + your vault stay the brain. Voice-pick the engine: 'use the realtime engine' / 'use the elevenlabs engine' / 'auto'.",
+    "api_key": "PUT-YOUR-OPENAI-KEY-HERE",
+    "realtime_model": "gpt-realtime",
+    "realtime_voice": "cedar"
+  },
+  "hardware": {
+    "_comment": "OPTIONAL — for 'Jarvis, connect my AirPods' (needs `brew install blueutil` + your AirPods' Bluetooth address from System Settings → Bluetooth → ⓘ).",
+    "airpods_mac": ""
+  },
+  "hue": {
+    "_comment": "OPTIONAL — the room becomes Jarvis's body: lights pulse emerald while he speaks, flash red on errors, dim in focus mode. Leave empty and it's a silent no-op. To pair: run the server, then say 'set up the lights' (press the round button on the Hue bridge first) — it auto-fills bridge_ip/app_key into jarvis-hue.json. Or set them here by hand.",
+    "bridge_ip": "",
+    "app_key": "",
+    "lights": []
+  },
+  "_duplex_comment": "LIVE full-duplex voice (the 📡 button) uses ElevenLabs Agents with THIS server as the custom LLM, so the brain stays Claude + your vault. It needs (1) an ElevenLabs api_key WITH Agents/Conversational-AI scope (above), and (2) a public https tunnel to port 4722. See integrations/TAILSCALE.md, then run: python3 setup_duplex.py --url <public-url>. State lands in jarvis-duplex.json (gitignored).",
+  "google": {
+    "client_id": "PUT-YOUR-GOOGLE-OAUTH-CLIENT-ID",
+    "client_secret": "PUT-YOUR-GOOGLE-OAUTH-CLIENT-SECRET"
+  },
+  "telegram": {
+    "bot_token": "PUT-YOUR-TELEGRAM-BOT-TOKEN-HERE (make one in 2 min: message @BotFather, /newbot)"
+  },
+  "business": {
+    "name": "Your Company LLC",
+    "email": "you@yourcompany.com",
+    "blurb": "one line about what you sell — grounds invoices and quotes"
+  },
+  "typesafe": {
+    "api_key": "PUT-YOUR-TYPESAFE-KEY-HERE",
+    "model": "jev-1.13.0",
+    "enabled": true,
+    "_comment": "Optional. Jev by TypeSafe AI gives Jarvis 200 ms reflexes: lane routing, the vault verdict, the judge, inbox triage, filming mode. Free key with $5 credit at typesafe.ai (no waitlist). Leave the placeholder to run without it."
+  },
+  "rea": {
+    "_comment": "V7.2 X-RAY VISION (REA, Reverse Engineer Anything). Run `python3 setup_rea.py` once: it installs REA pinned to the tested version into ~/.jarvis-tools/rea (needs Node.js 22.19+ and Google Chrome). Optional overrides: home (where REA lives), node (path to node), chrome (path to Chrome), headless (true = site teardowns run in a hidden browser), app_shot (false = never open an app to snapshot it).",
+    "home": "",
+    "node": "",
+    "chrome": "",
+    "headless": false,
+    "app_shot": true
+  },
+  "missions": {
+    "_comment": "V7.2 BUILDER + REA analyst. rea_live=true lets the REA worker also RUN or drive the thing it analyzes (LLDB launches, native/Electron/browser scenarios, Android device installs). Default off: static analysis only, nothing launches during a demo.",
+    "rea_live": false
+  }
+}

@@ -1,0 +1,2457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GeorgeAI — 3D Brain</title>
+<style>
+  :root { --accent: #34d399; --panel: rgba(10,13,18,.84); --line: #1f2937; --txt: #cbd5e1; --dim: #64748b; }
+  html, body { margin: 0; height: 100%; background: #04050a; overflow: hidden;
+    font-family: -apple-system, "SF Pro Text", Inter, sans-serif; }
+  #g { width: 100vw; height: 100vh; }
+
+  #side {
+    position: fixed; left: 14px; top: 14px; bottom: 14px; width: 250px; z-index: 10;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+    backdrop-filter: blur(10px); color: var(--txt);
+    display: flex; flex-direction: column; overflow: hidden;
+    transition: transform .35s cubic-bezier(.4,0,.2,1); user-select: none;
+  }
+  body.collapsed #side { transform: translateX(-288px); }
+  #side .scroll { overflow-y: auto; padding: 0 14px 14px; flex: 1; scrollbar-width: thin; scrollbar-color: #283548 transparent; }
+  #side .brandrow { display: flex; align-items: center; gap: 10px; margin: 14px 14px 4px; }
+  #side .brandrow img { width: 42px; height: 42px; border-radius: 10px; }
+  #side h1 { font-size: 14px; margin: 0; color: #f1f5f9; letter-spacing: .04em; }
+  #side .sub { font-size: 11px; color: var(--dim); margin-top: 1px; }
+  #side a.back { font-size: 11.5px; color: var(--accent); text-decoration: none; margin: 0 14px; }
+  #side .sec { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--dim); margin: 14px 0 7px; }
+  #side .card { background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 11px; padding: 9px 10px; }
+  #side input.search {
+    width: 100%; box-sizing: border-box; margin: 10px 0 0;
+    background: #0d1320; color: #e5e7eb; border: 1px solid #283548;
+    border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 12.5px; outline: none;
+  }
+  #side input.search:focus { border-color: var(--accent); }
+  .nrow { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 7px; cursor: pointer; font-size: 12.5px; min-height: 20px; }
+  .nrow:hover { background: rgba(255,255,255,.06); }
+  .nrow .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .nrow .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nrow .deg { margin-left: auto; color: var(--dim); font-size: 11px; }
+  #insp .placeholder { color: var(--dim); font-size: 12px; padding: 4px 6px; line-height: 1.5; }
+  #insp .head { display: flex; align-items: center; gap: 8px; padding: 2px 6px 6px; font-size: 13.5px; font-weight: 600; color: #f1f5f9; }
+  #insp .meta { font-size: 11px; color: var(--dim); padding: 0 6px 6px; }
+  #insp .prev { font-size: 11.5px; color: #9fb0c4; font-style: italic; line-height: 1.5;
+    padding: 7px 9px; margin: 0 2px 8px; background: rgba(255,255,255,.04); border-left: 2px solid var(--accent); border-radius: 0 8px 8px 0; }
+  #insp .depth { display: flex; align-items: center; gap: 5px; padding: 0 6px 8px; font-size: 11px; color: var(--dim); }
+  #insp .depth b { color: var(--txt); font-weight: 500; margin-right: 2px; }
+  #insp .depth button { width: 22px; height: 22px; border-radius: 6px; border: 1px solid #283548; background: #111827; color: #d1d5db; font-size: 11px; cursor: pointer; }
+  #insp .depth button.on { background: var(--accent); color: #06281c; border-color: transparent; font-weight: 700; }
+  .ctl { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 5px 6px; }
+  .ctl label { flex: 1; color: var(--txt); }
+  .ctl input[type=range] { width: 104px; accent-color: var(--accent); }
+  .ctl input[type=checkbox] { accent-color: var(--accent); }
+  #themes { display: flex; gap: 8px; padding: 4px 6px; }
+  #themes .sw { width: 34px; height: 24px; border-radius: 7px; cursor: pointer; border: 2px solid transparent; }
+  #themes .sw.on { border-color: var(--accent); }
+  #modeSeg { display: flex; gap: 6px; padding: 6px 6px 2px; }
+  #modeSeg button { flex: 1; padding: 5px 0; border-radius: 8px; border: 1px solid #283548; background: #111827; color: #d1d5db; font-size: 11.5px; cursor: pointer; }
+  #modeSeg button.on { background: var(--accent); color: #06281c; border-color: transparent; font-weight: 600; }
+  #side .foot { font-size: 10.5px; color: var(--dim); padding: 9px 14px; border-top: 1px solid var(--line); line-height: 1.6; }
+  #collapse {
+    position: fixed; top: 22px; left: 274px; z-index: 11; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--panel); border: 1px solid var(--line); color: var(--txt); cursor: pointer; font-size: 12px; line-height: 1;
+    transition: left .35s cubic-bezier(.4,0,.2,1), transform .35s;
+  }
+  body.collapsed #collapse { left: 14px; transform: rotate(180deg); }
+
+  #legend {
+    position: fixed; right: 18px; top: 18px; z-index: 10; font-size: 12.5px; color: var(--txt);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 6px;
+    backdrop-filter: blur(8px); user-select: none; min-width: 124px; max-height: 80vh; overflow-y: auto;
+  }
+  #legend .row { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 7px; cursor: pointer; }
+  #legend .row:hover { background: rgba(255,255,255,.05); }
+  #legend .row.off { opacity: .32; }
+  #legend .dot { width: 9px; height: 9px; border-radius: 50%; }
+  #legend .n { margin-left: auto; color: var(--dim); font-size: 11px; }
+  #legend .title { padding: 1px 10px 6px; color: var(--dim); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; }
+
+  #hud {
+    position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 10;
+    display: flex; gap: 8px; padding: 8px 13px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(8px);
+    font-size: 13px; color: #9ca3af; user-select: none;
+  }
+  #hud button { background: #111827; color: #d1d5db; border: 1px solid #283548; border-radius: 999px; padding: 6px 12px; font: inherit; cursor: pointer; }
+  #hud button:hover { background: #1c2a3f; color: #fff; }
+  #hud button.off { opacity: .45; }
+  #brand { position: fixed; right: 18px; bottom: 16px; font-size: 12px; color: #475569; pointer-events: none; z-index: 9; }
+  #hint { position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%); font-size: 12px; color: #475569; pointer-events: none; z-index: 9; }
+  #toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 25; display: none;
+    font-size: 12.5px; color: #f1f5f9; background: var(--panel); border: 1px solid var(--accent);
+    border-radius: 999px; padding: 8px 16px; backdrop-filter: blur(8px);
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://esm.sh/three@0.186.0",
+    "three/webgpu": "https://esm.sh/three@0.186.0/webgpu",
+    "three/tsl": "https://esm.sh/three@0.186.0/tsl",
+    "three/addons/": "https://esm.sh/three@0.186.0/addons/",
+    "three/examples/jsm/": "https://esm.sh/three@0.186.0/examples/jsm/",
+    "3d-force-graph": "https://esm.sh/3d-force-graph@1.80.0?external=three",
+    "three-spritetext": "https://esm.sh/three-spritetext@1.10.0?external=three"
+  }
+}
+</script>
+</head>
+<body>
+<div id="g"></div>
+
+<aside id="side">
+  <div class="brandrow">
+    <img src="logo.png" alt="logo">
+    <div>
+      <h1 id="brandName">GeorgeAI</h1>
+      <div class="sub" id="counts">loading…</div>
+    </div>
+  </div>
+  <a class="back" href="index.html">← back to 2D</a>
+  <input class="search" id="search" placeholder="Search the brain…" autocomplete="off">
+  <div class="scroll">
+    <div class="sec">Inspector</div>
+    <div class="card" id="insp"><div class="placeholder">Click a node to focus it — only that node and its connections light up, and you can read its note here. Shift-click a second node to trace the path.</div></div>
+    <div class="sec">Top Hubs</div>
+    <div class="card" id="hubs"></div>
+    <div class="sec">Forces</div>
+    <div class="card">
+      <div class="ctl"><label>Repel</label><input type="range" id="fRepel" min="0.3" max="2.4" step="0.05" value="1"></div>
+      <div class="ctl"><label>Link length</label><input type="range" id="fDist" min="0.5" max="2" step="0.05" value="1"></div>
+    </div>
+    <div class="sec">Display</div>
+    <div class="card">
+      <div class="ctl"><label>Hub labels</label><input type="checkbox" id="dLabels" checked></div>
+      <div class="ctl"><label>Particle flow</label><input type="checkbox" id="dFlow" checked></div>
+      <div class="ctl"><label>Auto-rotate</label><input type="checkbox" id="dRot" checked></div>
+      <div class="ctl"><label>Starfield</label><input type="checkbox" id="dStars" checked></div>
+    </div>
+    <div class="sec">Theme</div>
+    <div class="card">
+      <div id="themes"></div>
+      <div id="modeSeg">
+        <button id="modeType" class="on">By type</button>
+        <button id="modeHeat">Heatmap</button>
+      </div>
+    </div>
+  </div>
+  <div class="foot">drag = orbit · scroll = zoom · click = focus<br>shift-click = path · I = isolate · esc = clear</div>
+</aside>
+<button id="collapse">«</button>
+
+<div id="legend"><div class="title">Filter</div></div>
+<div id="hud">
+  <button id="fit">⊙ Fit</button>
+  <button id="iso" title="Isolate focused">🎯</button>
+  <button id="snap" title="Save PNG">📸</button>
+</div>
+<div id="toast"></div>
+
+<script src="graph-data.js?v=1"></script>
+<script type="module">
+import * as THREE from 'three';
+import ForceGraph3D from '3d-force-graph';
+import SpriteText from 'three-spritetext';
+
+// defensive: an unmapped group (e.g. a live-injected node) falls back to a neutral style instead of crashing
+const STYLE = new Proxy(GRAPH.groups || {}, { get:(t,k)=> (k in t) ? t[k] : { c:'#8aa39b', name:(typeof k==='string'?k:''), major:false } });
+const BRAND = GRAPH.brand || { name: 'GeorgeAI', logo: true };
+const MAJOR = new Set(Object.keys(STYLE).filter(k => STYLE[k].major));
+document.title = BRAND.name + ' — 3D Brain';
+document.getElementById('brandName').textContent = BRAND.name;
+/* footer credit line removed (his call, 2026-09-09) */
+if (!BRAND.logo) document.querySelector('#side .brandrow img').style.display = 'none';
+
+// escape note-derived text before it goes into any innerHTML (notes can come from voice capture)
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const THEMES = {
+  Workshop: { bg: '#04050a', link: '#42537a', star: '#46587a', accent: '#34d399' },
+  Obsidian: { bg: '#0d0d16', link: '#5b5689', star: '#6c6aa0', accent: '#a78bfa' },
+  Matrix:   { bg: '#010803', link: '#1f6b40', star: '#1f7a46', accent: '#22c55e' },
+  Midnight: { bg: '#060914', link: '#3a5170', star: '#3d5680', accent: '#38bdf8' },
+};
+let theme = THEMES.Workshop;
+
+// ---- data + degree + heat ----
+const deg = new Array(GRAPH.nodes.length).fill(0);
+for (const l of GRAPH.links) { deg[l.s]++; deg[l.t]++; }
+const maxDeg = Math.max(...deg);
+const HEAT = ['#27548f', '#3f83c9', '#60a5fa', '#ffd34d', '#fb923c', '#ff5d3b'];
+function lerpHex(a, b, t) {
+  const av = parseInt(a.slice(1), 16), bv = parseInt(b.slice(1), 16);
+  const c = i => Math.round(((av >> i) & 255) + (((bv >> i) & 255) - ((av >> i) & 255)) * t);
+  return `rgb(${c(16)},${c(8)},${c(0)})`;
+}
+function heatColor(d) {
+  const t = Math.sqrt(d / maxDeg) * (HEAT.length - 1);
+  const i = Math.min(HEAT.length - 2, Math.floor(t));
+  return lerpHex(HEAT[i], HEAT[i + 1], t - i);
+}
+const data = {
+  nodes: GRAPH.nodes.map((n, i) => ({ id: i, label: n.label, g: n.g, p: n.p || '', dg: deg[i],
+    val: 1 + Math.sqrt(deg[i]) * 1.6, heat: heatColor(deg[i]) })),
+  links: GRAPH.links.map(l => ({ source: l.s, target: l.t })),
+};
+const adj = new Map();
+for (const l of GRAPH.links) {
+  (adj.get(l.s) || adj.set(l.s, new Set()).get(l.s)).add(l.t);
+  (adj.get(l.t) || adj.set(l.t, new Set()).get(l.t)).add(l.s);
+}
+document.getElementById('counts').textContent = `${data.nodes.length} notes · ${data.links.length} connections`;
+
+// ---- state ----
+let focusNode = null, focusDepth = 1, searchTerm = '', colorMode = 'type';
+let showHubLabels = true, flowOn = true, isolateOn = false;
+let pathInfo = null, pathSource = null;
+let litSet = null, litLinks = null;
+const groupOn = Object.fromEntries(Object.keys(STYLE).map(g => [g, true]));
+const lid = x => (x && x.id !== undefined) ? x.id : x;
+
+function neighborhood(id, depth) {
+  const s = new Set([id]);
+  let frontier = [id];
+  for (let d = 0; d < depth; d++) {
+    const next = [];
+    for (const u of frontier) for (const v of adj.get(u) || []) {
+      if (!s.has(v)) { s.add(v); next.push(v); }
+    }
+    frontier = next;
+  }
+  return s;
+}
+function shortestPath(a, b) {
+  const prev = new Map([[a, null]]);
+  let frontier = [a];
+  while (frontier.length) {
+    const next = [];
+    for (const u of frontier) for (const v of adj.get(u) || []) {
+      if (prev.has(v)) continue;
+      prev.set(v, u);
+      if (v === b) { const p = [v]; let c = v; while (prev.get(c) !== null) { c = prev.get(c); p.unshift(c); } return p; }
+      next.push(v);
+    }
+    frontier = next;
+  }
+  return null;
+}
+function recomputeLit() {
+  if (pathInfo) { litSet = pathInfo.set; litLinks = pathInfo.links; return; }
+  if (focusNode) {
+    litSet = neighborhood(focusNode.id, focusDepth);
+    litLinks = null; // any link inside litSet
+    return;
+  }
+  litSet = null; litLinks = null;
+}
+
+// ---- 3d-force-graph ----
+const Graph = ForceGraph3D({ controlType: 'orbit', rendererConfig: { preserveDrawingBuffer: true, antialias: true } })
+  (document.getElementById('g'))
+  .showNavInfo(false)
+  .graphData(data)
+  .backgroundColor(theme.bg)
+  .enableNodeDrag(false)
+  .nodeRelSize(4)
+  .nodeVal(n => n.val)
+  .nodeOpacity(0.95)
+  .nodeResolution(12)
+  .nodeColor(nodeColor)
+  .nodeVisibility(n => groupOn[n.g] && (!isolateOn || (litSet && litSet.has(n.id))))
+  .nodeLabel(n => `<div style="font-family:-apple-system,sans-serif;font-size:13px;background:rgba(10,13,18,.92);border:1px solid #283548;border-radius:8px;padding:6px 10px;color:#f1f5f9;max-width:240px">${esc(n.label)}<br><span style="color:#64748b;font-size:11px">${STYLE[n.g].name} · ${n.dg} links — click to focus</span></div>`)
+  .nodeThreeObjectExtend(true)
+  .nodeThreeObject(labelObject)
+  .linkVisibility(l => groupOn[gOf(l.source)] && groupOn[gOf(l.target)] && (!isolateOn || (litSet && litSet.has(lid(l.source)) && litSet.has(lid(l.target)))))
+  .linkColor(linkColor)
+  .linkOpacity(0.28)
+  .linkWidth(linkWidth)
+  .linkDirectionalParticles(linkParticles)
+  .linkDirectionalParticleSpeed(0.0035)
+  .linkDirectionalParticleWidth(1.5)
+  .linkDirectionalParticleColor(() => theme.accent)
+  .onNodeClick(onNodeClick)
+  .onNodeRightClick((n, evt) => showNodeCard(n, evt))
+  .onBackgroundClick(() => { clearFocus(); hideNodeCard(); });
+
+// ---- right-click node card: a floating summary right on the canvas ----
+let nodeCardEl = null;
+function hideNodeCard(){ if (nodeCardEl) { nodeCardEl.remove(); nodeCardEl = null; } }
+function showNodeCard(n, evt){
+  if (evt && evt.preventDefault) evt.preventDefault();
+  hideNodeCard();
+  const st = STYLE[n.g] || { name: n.g, c: '#34d399' };
+  const excerpt = (n.p || '').trim();
+  const card = document.createElement('div');
+  card.id = 'j-nodecard';
+  card.innerHTML =
+    `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">`+
+      `<span style="width:10px;height:10px;border-radius:50%;background:${st.c};box-shadow:0 0 8px ${st.c};flex:none;"></span>`+
+      `<b style="font-size:14.5px;color:#f1f5f9;line-height:1.3;">${esc(n.label)}</b>`+
+      `<span id="j-nodecard-x" style="margin-left:auto;cursor:pointer;color:#5a6b62;font-size:16px;padding:0 2px;">✕</span></div>`+
+    `<div style="color:#64748b;font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">${esc(st.name)} · ${n.dg} connection${n.dg===1?'':'s'}</div>`+
+    (excerpt ? `<div style="color:#c9d5cf;font-size:12.5px;line-height:1.55;max-height:180px;overflow-y:auto;">${esc(excerpt.slice(0, 600))}${excerpt.length>600?'…':''}</div>`
+             : `<div style="color:#5a6b62;font-size:12px;font-style:italic;">No note text on this one.</div>`);
+  Object.assign(card.style, {
+    position: 'fixed', zIndex: 80, width: '320px', maxWidth: '86vw',
+    background: 'rgba(10,16,20,.94)', border: '1px solid rgba(52,211,153,.4)',
+    borderRadius: '14px', padding: '14px 16px', backdropFilter: 'blur(10px)',
+    boxShadow: '0 14px 48px rgba(0,0,0,.6)', fontFamily: '-apple-system,system-ui,sans-serif',
+    animation: 'jcard-in .22s ease-out'
+  });
+  const x = (evt && evt.clientX != null) ? evt.clientX : innerWidth / 2;
+  const y = (evt && evt.clientY != null) ? evt.clientY : innerHeight / 2;
+  card.style.left = Math.min(x + 14, innerWidth - 350) + 'px';
+  card.style.top = Math.min(y - 10, innerHeight - 280) + 'px';
+  document.body.appendChild(card);
+  nodeCardEl = card;
+  card.querySelector('#j-nodecard-x').onclick = hideNodeCard;
+}
+addEventListener('keydown', e => { if (e.key === 'Escape') hideNodeCard(); });
+document.getElementById('g').addEventListener('contextmenu', e => e.preventDefault());
+
+function gOf(x) {                                      // S29: born nodes live in data.nodes, not GRAPH.nodes — a raw id for a
+  if (x && x.g) return x.g;                            // newborn's link (the engine's first update) threw "reading 'g'" since V3
+  const n = data.nodes[lid(x)] || GRAPH.nodes[lid(x)];
+  return n ? n.g : 'note';
+}
+function isLit(n) {
+  if (litSet) return litSet.has(n.id);
+  if (searchTerm) return n.label.toLowerCase().includes(searchTerm);
+  return true;
+}
+function nodeColor(n) {
+  if (!isLit(n)) return (searchTerm && !litSet) ? '#1c2433' : '#11161f';
+  return colorMode === 'heat' ? n.heat : STYLE[n.g].c;
+}
+function linkLit(l) {
+  if (!litSet) return !searchTerm;
+  const s = lid(l.source), t = lid(l.target);
+  if (litLinks) return litLinks.has(s + '-' + t) || litLinks.has(t + '-' + s);
+  return litSet.has(s) && litSet.has(t);
+}
+function linkColor(l) { return linkLit(l) ? theme.accent : (litSet ? '#0d1119' : theme.link); }
+function linkWidth(l) { return (litSet && linkLit(l)) ? 0.9 : 0; }
+function linkParticles(l) {
+  if (!flowOn) return 0;
+  if (litSet) return linkLit(l) ? 3 : 0;
+  const sg = gOf(l.source), tg = gOf(l.target);
+  return (MAJOR.has(sg) && MAJOR.has(tg)) ? 1 : 0;
+}
+function labelVisible(n) {
+  if (litSet) return litSet.has(n.id);
+  if (searchTerm) return n.label.toLowerCase().includes(searchTerm);
+  return showHubLabels && MAJOR.has(n.g) && n.dg >= 4;
+}
+function labelObject(n) {
+  if (!labelVisible(n)) return undefined;
+  const hero = focusNode && n.id === focusNode.id;
+  const s = new SpriteText(n.label);
+  s.color = hero ? '#ffffff' : '#e6ebf2';
+  s.textHeight = hero ? Math.min(9, 4.5 + n.dg * 0.12) : Math.min(7, 3.2 + n.dg * 0.12);
+  s.fontWeight = hero ? '700' : '500';
+  s.position.y = -(4 + n.val * 1.1);
+  s.material.depthWrite = false;
+  return s;
+}
+function refresh() {
+  Graph.nodeColor(nodeColor).nodeVisibility(Graph.nodeVisibility())
+    .linkColor(linkColor).linkWidth(linkWidth).linkVisibility(Graph.linkVisibility())
+    .linkDirectionalParticles(linkParticles)
+    .nodeThreeObject(labelObject);
+}
+
+function onNodeClick(n, evt) {
+  userMoved = true;                       // the app/user focused something — don't let the intro override it
+  if (evt && evt.shiftKey && focusNode && n.id !== focusNode.id) {
+    const p = shortestPath(focusNode.id, n.id);
+    if (p) {
+      const set = new Set(p), links = new Set();
+      for (let i = 0; i < p.length - 1; i++) { links.add(p[i] + '-' + p[i + 1]); links.add(p[i + 1] + '-' + p[i]); }
+      pathInfo = { list: p, set, links };
+      recomputeLit(); refresh(); updateInspector();
+      return;
+    }
+  }
+  pathInfo = null; pathSource = null;
+  focusNode = n;
+  recomputeLit(); refresh(); updateInspector();
+  // frame the node + its neighbourhood, scaled by how connected it is (stable, not jittery):
+  // hubs pull back a little, leaves come in close — then you can scroll to zoom freely
+  const dist = Math.max(220, Math.min(560, 220 + Math.sqrt(n.dg || 1) * 30));
+  const r = 1 + dist / Math.hypot(n.x || 1, n.y || 1, n.z || 1);
+  Graph.cameraPosition({ x: n.x * r, y: n.y * r, z: n.z * r }, n, 1200);
+}
+function clearFocus() {
+  focusNode = null; pathInfo = null; pathSource = null; isolateOn = false;
+  recomputeLit(); refresh(); updateInspector();
+}
+
+// ---- atmosphere ----
+const scene = Graph.scene();
+scene.fog = new THREE.FogExp2(theme.bg, 0.00055);
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(1800 * 3);
+for (let i = 0; i < 1800; i++) {
+  const r = 900 + Math.random() * 1600, th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+  starPos[i*3] = r*Math.sin(ph)*Math.cos(th); starPos[i*3+1] = r*Math.sin(ph)*Math.sin(th); starPos[i*3+2] = r*Math.cos(ph);
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: theme.star, size: 1.4, sizeAttenuation: true, transparent: true, opacity: 0.7 }));
+scene.add(stars);
+
+// ---- forces ----
+Graph.d3Force('charge').strength(-130);
+Graph.d3Force('link').distance(36);
+let repel = 1, ldist = 1;
+
+// ---- intro ----
+Graph.cameraPosition({ x: 0, y: 0, z: 800 });   // neutral boot — outside the expanding layout
+let fitted = false, userMoved = false;
+// HIS framing law (2026-08-28): settle → fit → push HALFWAY in (edges cropping, hubs
+// readable) → record that camera as HOME. Refresh and the ✌ reset both land exactly here.
+const fitOnce = () => { if (fitted) return; fitted = true;
+  setTimeout(() => { if (userMoved) return;
+    // computed framing, no tween races: measure the settled cloud, place the camera
+    // at the exact distance for FILL 1.15 (his look: frame full, edges just cropping)
+    const ns = data.nodes.filter(n => n.x != null);
+    if (!ns.length) return;
+    const xs = ns.map(n => n.x).sort((a, b) => a - b), ys = ns.map(n => n.y).sort((a, b) => a - b),
+          zs = ns.map(n => n.z).sort((a, b) => a - b);
+    const p = (arr, q) => arr[Math.floor((arr.length - 1) * q)];
+    const cx = (p(xs, .05) + p(xs, .95)) / 2, cy = (p(ys, .05) + p(ys, .95)) / 2,
+          cz = (p(zs, .05) + p(zs, .95)) / 2;
+    const cam = Graph.camera(), asp = cam.aspect || 1.8;
+    const halfH = Math.max((p(ys, .95) - p(ys, .05)) / 2, (p(xs, .95) - p(xs, .05)) / 2 / asp, 20);
+    const r = halfH / (Math.tan(cam.fov * Math.PI / 360) * 1.30) + (p(zs, .95) - cz) * .6;   // 1.62→1.30 (S18: his call — the old fill was too zoomed in; this is boot AND peace-reset)
+    const pos = { x: cx, y: cy, z: cz + r }, tgt = { x: cx, y: cy, z: cz };
+    Graph.cameraPosition(pos, tgt, 800);
+    if (window.__os) window.__os.homeCam = { pos, tgt };   // computed destination — never a
+  }, 800);                                                 // read-back (tweens stall in hidden tabs)
+};
+Graph.onEngineStop(fitOnce);
+setTimeout(fitOnce, 9000);
+
+// ---- controls ----
+const oc = Graph.controls();
+oc.autoRotate = true; oc.autoRotateSpeed = 0.5;
+let rot = true;
+function setRot(on) { rot = on; oc.autoRotate = on; document.getElementById('dRot').checked = on; }
+// keep spinning forever — only pause WHILE the user is actively dragging, then resume
+oc.addEventListener('start', () => { oc.autoRotate = false; userMoved = true; });
+oc.addEventListener('end', () => { oc.autoRotate = rot; });
+
+// ---- inspector / sidebar ----
+function depthHtml() { return `<div class="depth"><b>Depth</b>${[1,2,3].map(d => `<button class="${focusDepth===d?'on':''}" data-d="${d}">${d}</button>`).join('')}</div>`; }
+function updateInspector() {
+  const el = document.getElementById('insp');
+  if (pathInfo) {
+    const p = pathInfo.list.map(i => data.nodes[i]);
+    el.innerHTML = `<div class="head"><span class="dot" style="width:10px;height:10px;border-radius:50%;background:${theme.accent}"></span>Path · ${p.length-1} hops</div>` +
+      p.map(m => `<div class="nrow" data-i="${m.id}"><span class="dot" style="background:${STYLE[m.g].c}"></span><span class="lbl">${esc(m.label)}</span><span class="deg">${m.dg}</span></div>`).join('');
+    wireRows(el); return;
+  }
+  const n = focusNode;
+  if (!n) { el.innerHTML = '<div class="placeholder">Click a node to focus it — only that node and its connections light up, and you can read its note here. Shift-click a second node to trace the path.</div>'; return; }
+  const neigh = [...(adj.get(n.id) || [])].map(j => data.nodes[j]).sort((a,b) => b.dg - a.dg);
+  let html = `<div class="head"><span class="dot" style="width:10px;height:10px;border-radius:50%;background:${colorMode==='heat'?n.heat:STYLE[n.g].c}"></span>${esc(n.label)}</div>`;
+  html += `<div class="meta">${STYLE[n.g].name} · ${neigh.length} connections${isolateOn?' · 🎯 isolated':''}</div>`;
+  const pLong = n.p && n.p.length > 170;
+  const pShort = pLong ? n.p.slice(0, 170).trimEnd() + '…' : (n.p || '');
+  if (n.p) html += `<div class="prev" id="prevTxt">${esc(pShort)}</div>`;
+  if (pLong) html += `<div class="prevMore" style="font-size:11px;color:var(--accent);cursor:pointer;padding:0 9px 9px;margin-top:-4px;user-select:none">Read full note ▾</div>`;
+  html += depthHtml();
+  html += neigh.slice(0, 14).map(m => `<div class="nrow" data-i="${m.id}"><span class="dot" style="background:${STYLE[m.g].c}"></span><span class="lbl">${esc(m.label)}</span><span class="deg">${m.dg}</span></div>`).join('');
+  if (neigh.length > 14) html += `<div class="meta">+ ${neigh.length-14} more</div>`;
+  el.innerHTML = html;
+  wireRows(el);
+  el.querySelectorAll('.depth button').forEach(b => b.onclick = () => { focusDepth = +b.dataset.d; recomputeLit(); refresh(); updateInspector(); });
+  const pm = el.querySelector('.prevMore');
+  if (pm) { let exp = false; pm.onclick = () => { exp = !exp; el.querySelector('#prevTxt').textContent = exp ? n.p : pShort; pm.textContent = exp ? 'Show less ▴' : 'Read full note ▾'; }; }
+}
+function wireRows(el) { el.querySelectorAll('.nrow').forEach(r => r.onclick = () => onNodeClick(data.nodes[+r.dataset.i])); }
+function buildHubs() {
+  const el = document.getElementById('hubs');
+  const top = [...data.nodes].sort((a,b) => b.dg - a.dg).slice(0, 8);
+  el.innerHTML = top.map(n => `<div class="nrow" data-i="${n.id}"><span class="dot" style="background:${STYLE[n.g].c}"></span><span class="lbl">${esc(n.label)}</span><span class="deg">${n.dg}</span></div>`).join('');
+  wireRows(el);
+}
+buildHubs(); updateInspector();
+document.getElementById('collapse').onclick = () => document.body.classList.toggle('collapsed');
+
+// ---- toast ----
+const toast = document.getElementById('toast');
+let toastTimer;
+function showToast(m) { toast.textContent = m; toast.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.style.display = 'none', 2600); }
+
+// ---- search ----
+const searchEl = document.getElementById('search');
+searchEl.addEventListener('input', () => {
+  searchTerm = searchEl.value.trim().toLowerCase();
+  if (searchTerm && (focusNode || pathInfo)) { focusNode = null; pathInfo = null; recomputeLit(); updateInspector(); }
+  refresh();
+});
+searchEl.addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.key === 'Enter' && searchTerm) {
+    const m = data.nodes.filter(n => n.label.toLowerCase().includes(searchTerm)).sort((a,b) => b.dg - a.dg);
+    if (m.length) { showToast(`${m.length} match${m.length>1?'es':''} — focusing “${m[0].label}”`); searchEl.value=''; searchTerm=''; onNodeClick(m[0]); }
+    else showToast('No match');
+  }
+  if (e.key === 'Escape') { searchEl.value=''; searchTerm=''; refresh(); searchEl.blur(); }
+});
+
+// ---- legend filters ----
+const legend = document.getElementById('legend');
+const counts = {};
+for (const n of data.nodes) counts[n.g] = (counts[n.g]||0)+1;
+for (const g of Object.keys(STYLE)) {
+  if (!counts[g]) continue;
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `<span class="dot" style="background:${STYLE[g].c}"></span>${STYLE[g].name}<span class="n">${counts[g]}</span>`;
+  row.onclick = () => { groupOn[g] = !groupOn[g]; row.classList.toggle('off', !groupOn[g]); refresh(); };
+  legend.appendChild(row);
+}
+
+// ---- forces sliders ----
+document.getElementById('fRepel').oninput = e => { repel = +e.target.value; Graph.d3Force('charge').strength(-130*repel); Graph.d3ReheatSimulation(); };
+document.getElementById('fDist').oninput = e => { ldist = +e.target.value; Graph.d3Force('link').distance(36*ldist); Graph.d3ReheatSimulation(); };
+
+// ---- display toggles ----
+document.getElementById('dLabels').onchange = e => { showHubLabels = e.target.checked; refresh(); };
+document.getElementById('dFlow').onchange = e => { flowOn = e.target.checked; refresh(); };
+document.getElementById('dRot').onchange = e => setRot(e.target.checked);
+document.getElementById('dStars').onchange = e => { stars.visible = e.target.checked; };
+
+// ---- themes ----
+const themesEl = document.getElementById('themes');
+for (const [name, t] of Object.entries(THEMES)) {
+  const sw = document.createElement('div');
+  sw.className = 'sw' + (t === theme ? ' on' : '');
+  sw.title = name;
+  sw.style.background = `linear-gradient(135deg, ${t.bg} 50%, ${t.accent} 50%)`;
+  sw.onclick = () => {
+    theme = t;
+    document.documentElement.style.setProperty('--accent', t.accent);
+    Graph.backgroundColor(t.bg);
+    scene.fog.color.set(t.bg); stars.material.color.set(t.star);
+    themesEl.querySelectorAll('.sw').forEach(x => x.classList.remove('on'));
+    sw.classList.add('on');
+    refresh();
+  };
+  themesEl.appendChild(sw);
+}
+document.getElementById('modeType').onclick = e => { colorMode='type'; e.target.classList.add('on'); document.getElementById('modeHeat').classList.remove('on'); refresh(); };
+document.getElementById('modeHeat').onclick = e => { colorMode='heat'; e.target.classList.add('on'); document.getElementById('modeType').classList.remove('on'); refresh(); };
+
+// ---- hud ----
+document.getElementById('fit').onclick = () => { fitted = true; Graph.zoomToFit(1000, 90); };
+document.getElementById('iso').onclick = () => {
+  if (!focusNode) { showToast('Click a node first, then isolate'); return; }
+  isolateOn = !isolateOn; refresh(); updateInspector();
+  if (isolateOn) { Graph.zoomToFit(900, 60, n => litSet.has(n.id)); }
+};
+document.getElementById('snap').onclick = () => {
+  const a = document.createElement('a');
+  a.download = 'ai-workshop-os-3d.png';
+  a.href = Graph.renderer().domElement.toDataURL('image/png');
+  a.click();
+};
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if ((e.key === 'i' || e.key === 'I') && focusNode) document.getElementById('iso').click();
+  if (e.key === 'Escape') { clearFocus(); searchEl.value=''; searchTerm=''; refresh(); }
+});
+
+function addNote(label, text, targetIdx, group){
+  const id = data.nodes.length;
+  const aId = (targetIdx != null && targetIdx >= 0 && targetIdx < data.nodes.length)
+    ? targetIdx : (focusNode ? focusNode.id : 0);      // link to the named node, else the focused one
+  const g = (group && GRAPH.groups && GRAPH.groups[group]) ? group : 'note';   // server-assigned kind (core/concept/note)
+  const newNode = { id, label: label || 'New note', g, p: text || '', dg: 1,
+    val: 3.4, heat: '#3ee6a8' };                       // newest = brightest, even in heat mode
+  // birth PLACE: right beside its anchor (a random far-away spawn = invisible dark dot + a long
+  // confusing line). With coords set, the engine keeps them and the camera can fly instantly.
+  const a = data.nodes[aId];
+  if (a && [a.x, a.y, a.z].every(Number.isFinite)) {
+    const j = () => (Math.random() - 0.5) * 26;
+    newNode.x = a.x + j(); newNode.y = a.y + j(); newNode.z = a.z + j();
+  }
+  data.nodes.push(newNode);
+  data.links.push({ source: id, target: aId });
+  (adj.get(id) || adj.set(id, new Set()).get(id)).add(aId);
+  (adj.get(aId) || adj.set(aId, new Set()).get(aId)).add(id);
+  Graph.graphData(data);                               // ONE re-heat only — more would scatter the layout
+  // fly to the newborn — but NEVER before the engine has given it real coordinates
+  // (flying at NaN coords is what blanked the screen); if they never come, fly to its anchor
+  const fly = (tries) => {
+    const n = data.nodes[id];
+    if ([n.x, n.y, n.z].every(Number.isFinite)) { onNodeClick(n); return; }
+    if ((tries || 0) < 25) setTimeout(() => fly((tries || 0) + 1), 80);
+    else if (data.nodes[aId]) onNodeClick(data.nodes[aId]);
+  };
+  setTimeout(() => fly(0), 90);
+  // birth animation: pulse the sphere's THREE object directly — pure visual, the physics
+  // engine is never touched again (re-feeding graphData here is what blanked the screen)
+  let t0 = null;
+  const pulse = (ts) => {
+    const o = data.nodes[id] && data.nodes[id].__threeObj;
+    if (!o) { requestAnimationFrame(pulse); return; }  // wait for the object to materialize
+    if (t0 == null) t0 = ts;
+    const p = Math.min(1, (ts - t0) / 1800);
+    const k = 1 + 2.4 * (1 - p) * (0.55 + 0.45 * Math.sin(p * 14));  // supernova → shimmer → rest
+    o.scale.set(k, k, k);
+    if (p < 1) requestAnimationFrame(pulse); else o.scale.set(1, 1, 1);
+  };
+  requestAnimationFrame(pulse);
+  // guaranteed-visible birth GLOW: override the mesh material bright emerald for the show —
+  // independent of color mode (heat mode renders 1-link nodes near-black) and of litSet.
+  const glow = setInterval(() => {
+    const o = data.nodes[id] && data.nodes[id].__threeObj;
+    if (!o || !o.material) return;
+    clearInterval(glow);
+    const m = o.material = o.material.clone();          // clone — materials are shared per color
+    m.color.set('#3ee6a8');
+    if (m.emissive) m.emissive.set('#1f8f68');
+  }, 50);
+  setTimeout(() => { clearInterval(glow); refresh(); }, 2600);  // then restore state-driven colors
+  return id;
+}
+// light a whole cluster of nodes at once (cross-note synthesis) instead of focusing one
+function lightNodes(ids){
+  ids = (ids || []).filter(i => i >= 0 && i < data.nodes.length);
+  if (!ids.length) return;
+  if (ids.length === 1) { onNodeClick(data.nodes[ids[0]]); return; }
+  userMoved = true;
+  focusNode = null; pathInfo = null; pathSource = null; isolateOn = false;
+  litSet = new Set(ids); litLinks = null;
+  refresh(); updateInspector();
+  Graph.zoomToFit(1100, 80, n => litSet.has(n.id));
+}
+window.__os = { Graph, data, onNodeClick, clearFocus, groupOn, addNote, lightNodes, showNodeCard, hideNodeCard,
+  get focusNode(){return focusNode;}, get litSet(){return litSet;}, get searchTerm(){return searchTerm;},
+  get colorMode(){return colorMode;}, get isolateOn(){return isolateOn;}, get pathInfo(){return pathInfo;} };
+</script>
+
+<style>
+  #j-tasks{position:fixed;right:22px;bottom:150px;z-index:55;width:222px;background:rgba(10,16,20,.9);border:1px solid rgba(52,211,153,.22);border-radius:12px;padding:11px 13px;backdrop-filter:blur(10px);display:none;font-family:-apple-system,system-ui,sans-serif;box-shadow:0 10px 36px rgba(0,0,0,.5);}
+  #j-tasks h4{font-family:'SF Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.16em;color:#5a6b62;margin:0 0 8px;text-transform:uppercase;}
+  .jt{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:#cdd8d2;padding:3px 0;line-height:1.4;}
+  .jt-c{color:#34d399;cursor:pointer;flex-shrink:0;user-select:none;}
+  .jt-c:hover{color:#fff;}
+  /* ---- Agent Inbox: cards raised by background daemons (notify / ask / approve) ---- */
+  /* solid layered surfaces + sans body + standard solid buttons — no translucent washes
+     (user 2026-07-13: the old cyan-wash card read as "AI-made and childish") */
+  #j-inbox{position:fixed;right:22px;top:18px;z-index:57;width:264px;max-height:64vh;overflow:auto;background:#10161d;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px 13px;backdrop-filter:blur(12px);display:none;font-family:-apple-system,system-ui,sans-serif;box-shadow:0 14px 44px rgba(0,0,0,.55);}
+  #j-inbox h4{font-family:'SF Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.16em;color:#8fa39a;margin:0 0 9px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;}
+  #j-inbox h4 .jc-n{color:#07130d;background:#34d399;border-radius:99px;padding:1px 7px;font-size:9px;font-weight:700;}
+  .jc{border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:11px 12px;margin-bottom:8px;background:#1a212a;box-shadow:0 4px 14px rgba(0,0,0,.35);}
+  .jc.jc-hi{border-color:rgba(245,200,90,.45);background:#221d13;}
+  .jc-t{font-size:12.5px;color:#f2f6f3;font-weight:600;line-height:1.4;}
+  .jc-b{font-size:11.5px;color:#b6c1bb;margin-top:5px;line-height:1.55;}
+  .jc-a{margin-top:9px;display:flex;gap:7px;flex-wrap:wrap;}
+  .jc-a button{font-size:11px;border-radius:7px;padding:5px 12px;cursor:pointer;border:1px solid #464a53;background:#2f323a;color:#e6e8ee;font-family:inherit;}
+  .jc-a button:hover{filter:brightness(1.18);}
+  .jc-do{border-color:#2e6b52!important;background:#245844!important;color:#dcffe9!important;}
+
+  /* ---- Jarvis HUD reactor (right side) — steady concentric spin (no idle pulsing);
+         the central J.A.R.V.I.S. lobe glows live, in rhythm with Jarvis's voice ---- */
+  #j-orb{position:fixed;right:34px;top:46%;transform:translateY(-50%);z-index:54;width:204px;height:204px;pointer-events:auto;cursor:grab;display:none;
+    --hud:#62dbff; --hud2:#2f9fd0; --accent:#f4a93a; --glow:rgba(70,200,255,.5); --beat:0;}
+  /* Jarvis status panel — state + detail + brain chip, stacked under the HUD on the right */
+  /* S19b/c dock order (his call): the state PILL + the brain pill share ONE line (matching
+     button treatment), the RING/CUBE/FACE picker sits centered beneath them, status text
+     below that, then the organ chips */
+  /* the state pill parks to the LEFT of the brain chip. Its `right` is re-measured from the
+     chip's real width whenever the brain changes (setBrainBadge) — a fixed 204px box used to
+     let a longer model id ("fable 5.1") slide underneath the pill. Default clears a typical id. */
+  #j-state{position:fixed;right:172px;left:auto;top:calc(46% + 112px);width:auto;text-align:right;z-index:55;pointer-events:none;
+    color:#5a6b62;transition:color .25s;white-space:nowrap;}
+  #j-state-pill{display:inline-block;font-family:'SF Mono',ui-monospace,monospace;font-size:11px;font-weight:600;
+    letter-spacing:.12em;text-transform:uppercase;border:1px solid color-mix(in srgb, currentColor 34%, transparent);
+    border-radius:999px;padding:5px 13px;background:rgba(10,22,18,.72);backdrop-filter:blur(6px);
+    text-shadow:0 0 14px rgba(52,211,153,.25);}
+  #j-state .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:7px;vertical-align:1px;
+    box-shadow:0 0 8px currentColor;}
+  #j-state.pulse .dot{animation:jstate-pulse 1.1s ease-in-out infinite;}
+  @keyframes jstate-pulse{0%,100%{opacity:.35;transform:scale(.8);}50%{opacity:1;transform:scale(1.15);}}
+  @keyframes jcard-in{from{opacity:0;transform:translateY(-10px) scale(.96);}to{opacity:1;transform:none;}}
+  #j-inbox .jc{animation:jcard-in .3s ease-out;}
+  #j-status{position:fixed !important;right:34px;left:auto;bottom:auto;top:calc(46% + 180px);width:204px;text-align:center;height:auto !important;line-height:1.45;z-index:55;pointer-events:none;}
+  #j-orb svg{width:100%;height:100%;overflow:visible;display:block;}
+  #j-orb .glow{filter:drop-shadow(0 0 3px var(--glow));}
+  #j-orb .rot{transform-box:view-box;transform-origin:100px 100px;}
+  #j-orb .s-hud{stroke:var(--hud);fill:none;}
+  #j-orb .s-hud2{stroke:var(--hud2);fill:none;}
+  #j-orb .s-accent{stroke:var(--accent);fill:none;}
+  #j-orb .dot{fill:var(--accent);opacity:.8;}
+  /* steady rotation only — different speeds + directions so it always feels alive */
+  .rot-a{animation:hudCCW 64s linear infinite;} .rot-b{animation:hudCW 26s linear infinite;}
+  .rot-c{animation:hudCW 16s linear infinite;} .rot-d{animation:hudCCW 19s linear infinite;}
+  .rot-core{animation:hudCW 36s linear infinite;} .rot-radar{animation:hudCW 6s linear infinite;}
+  @keyframes hudCW{to{transform:rotate(360deg);}} @keyframes hudCCW{to{transform:rotate(-360deg);}}
+  /* central lobe + label — opacity/glow driven by --beat (live voice level, 0 when silent) */
+  #j-orb .core-disc{fill:url(#hudCore);}
+  #j-orb .core-glow{fill:var(--hud);filter:blur(5px);opacity:calc(0.06 + var(--beat)*0.72);}
+  #j-orb .core-lobe{fill:var(--hud);opacity:calc(var(--beat)*0.32);}
+  #j-orb .core-rim{stroke:var(--hud);fill:none;opacity:calc(0.4 + var(--beat)*0.5);}
+  #j-orb .hud-label{fill:#ecfffb;font-family:ui-monospace,'SF Mono',monospace;font-weight:700;font-size:13.5px;letter-spacing:1.4px;
+    filter:drop-shadow(0 0 calc(1.5px + var(--beat)*9px) var(--hud));}
+  /* states change colour only — no pulsing */
+  #j-orb.is-listen{--hud:#79f0ff;--glow:rgba(120,235,255,.72);}
+  #j-orb.is-think{--hud:#9cccdd;--accent:#ffd06a;--glow:rgba(244,169,58,.5);}
+  #j-orb.is-speak{--hud:#7dffd9;--glow:rgba(60,230,170,.8);}
+  /* bottom dock buttons — solid chips, emoji glow so dark glyphs read on the dark scene,
+     and instant hover tooltips (user: "almost invisible" + "tell me exactly what it is") */
+  .j-dock{position:relative;text-shadow:0 0 8px rgba(214,255,240,.30);}
+  .j-dock:hover{filter:brightness(1.25);}
+  .j-dock::after{content:attr(data-tip);position:absolute;bottom:56px;right:0;background:#10161c;
+    border:1px solid rgba(52,211,153,.4);color:#e2ece7;font-size:11.5px;font-weight:600;letter-spacing:.02em;
+    padding:7px 11px;border-radius:9px;white-space:nowrap;opacity:0;pointer-events:none;
+    transform:translateY(4px);transition:opacity .16s,transform .16s;
+    font-family:-apple-system,'Segoe UI',sans-serif;text-shadow:none;z-index:80;}
+  .j-dock:hover::after{opacity:1;transform:translateY(0);}
+</style>
+<div id="j-inbox"><h4>JARVIS · Inbox <span class="jc-n" id="j-inbox-n" style="display:none"></span></h4><div id="j-inbox-list"></div></div>
+<div id="j-tasks"><h4>Tasks</h4><div id="j-tasks-list"></div></div>
+<div id="j-orb"><svg viewBox="0 0 200 200" aria-hidden="true">
+  <defs>
+    <radialGradient id="hudCore" cx="50%" cy="45%" r="62%">
+      <stop offset="0%" stop-color="#0e413c"/><stop offset="70%" stop-color="#0b302d"/>
+      <stop offset="100%" stop-color="#082825"/>
+    </radialGradient>
+  </defs>
+  <g class="hud-pulse glow">
+    <g class="rot rot-a"><g id="hud-ticks" class="s-hud" stroke-width="0.9"></g></g>
+    <circle class="rot rot-b s-hud" cx="100" cy="100" r="86" stroke-width="3.4" stroke-dasharray="48 30" stroke-linecap="round"/>
+    <circle class="s-hud2" cx="100" cy="100" r="79" stroke-width="1" opacity="0.45"/>
+    <circle class="rot rot-c s-accent" cx="100" cy="100" r="70" stroke-width="4.2" stroke-dasharray="122 318" stroke-linecap="round"/>
+    <circle class="rot rot-d s-hud" cx="100" cy="100" r="55" stroke-width="1.2" stroke-dasharray="2 6" opacity="0.7"/>
+    <circle class="s-hud2" cx="100" cy="100" r="40" stroke-width="1" opacity="0.4"/>
+    <g class="rot rot-core s-hud2" id="hud-spokes" stroke-width="0.9" opacity="0.5"></g>
+    <g class="rot rot-radar"><line class="s-hud" x1="100" y1="100" x2="100" y2="53" stroke-width="1.6" opacity="0.6"/></g>
+    <g id="hud-dots"></g>
+    <circle class="core-glow" cx="100" cy="100" r="37"/>
+    <circle class="core-disc" cx="100" cy="100" r="32"/>
+    <circle class="core-lobe" cx="100" cy="100" r="32"/>
+    <circle class="core-rim" cx="100" cy="100" r="32" stroke-width="1.2"/>
+    <text class="hud-label" x="100" y="103.5" text-anchor="middle">J.A.R.V.I.S.</text>
+  </g>
+</svg></div>
+<div id="j-state"><span id="j-state-pill"><span class="dot"></span><span id="j-state-txt">ONLINE</span></span></div>
+<div id="j-status" style="font-family:'SF Mono',ui-monospace,monospace;font-size:10.5px;color:#5a6b62;letter-spacing:.08em;"></div>
+<div id="j-brain" style="position:fixed;right:34px;left:auto;top:calc(46% + 112px);width:auto;text-align:right;z-index:55;pointer-events:none;"><span style="display:inline-block;font-family:'SF Mono',ui-monospace,monospace;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#2e6b52;border:1px solid rgba(52,211,153,.28);border-radius:999px;padding:5px 14px;background:rgba(10,22,18,.72);backdrop-filter:blur(6px);" id="j-brain-chip"></span></div>
+
+<div id="jarvis" style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;align-items:center;gap:12px;width:min(660px,92vw);font-family:-apple-system,system-ui,sans-serif;">
+  <div id="j-answer" style="display:none;max-width:100%;background:rgba(10,16,20,.92);border:1px solid rgba(52,211,153,.3);border-radius:14px;padding:13px 17px;color:#eaf0ec;font-size:14.5px;line-height:1.55;backdrop-filter:blur(10px);box-shadow:0 12px 44px rgba(0,0,0,.55);"></div>
+  <div style="display:flex;gap:10px;align-items:center;width:100%;">
+    <input id="j-input" placeholder="Ask · &quot;remind me…&quot; · &quot;good morning&quot; · &quot;show me…&quot; · &quot;remember…&quot;" autocomplete="off"
+      style="flex:1;background:rgba(10,16,20,.92);border:1px solid rgba(52,211,153,.25);border-radius:99px;padding:12px 18px;color:#eaf0ec;font-size:14px;outline:none;backdrop-filter:blur(10px);">
+    <button id="j-live" class="j-dock" data-tip="Live call — talk with Jarvis in real time"
+      style="flex-shrink:0;width:46px;height:46px;border-radius:50%;border:1px solid rgba(52,211,153,.45);background:#212b30;color:#5a6b62;font-size:17px;cursor:pointer;backdrop-filter:blur(10px);">📡</button>
+    <button id="j-screen" class="j-dock" data-tip="Screen share — let Jarvis see your screen"
+      style="flex-shrink:0;width:46px;height:46px;border-radius:50%;border:1px solid rgba(52,211,153,.45);background:#212b30;color:#5a6b62;font-size:17px;cursor:pointer;backdrop-filter:blur(10px);">🖥</button>
+    <button id="j-bell" class="j-dock" data-tip="Daily morning briefing — on/off"
+      style="flex-shrink:0;width:46px;height:46px;border-radius:50%;border:1px solid rgba(52,211,153,.45);background:#212b30;color:#5a6b62;font-size:17px;cursor:pointer;backdrop-filter:blur(10px);">🔔</button>
+    <button id="j-wake" class="j-dock" data-tip="Hands-free mode — just say 'Jarvis…'"
+      style="flex-shrink:0;width:46px;height:46px;border-radius:50%;border:1px solid rgba(52,211,153,.45);background:#212b30;color:#5a6b62;font-size:17px;cursor:pointer;backdrop-filter:blur(10px);">👂</button>
+    <button id="j-mic" class="j-dock" data-tip="Tap to talk — ask one question"
+      style="flex-shrink:0;width:46px;height:46px;border-radius:50%;border:1px solid rgba(52,211,153,.55);background:#27423a;color:#34d399;font-size:18px;cursor:pointer;backdrop-filter:blur(10px);">🎙</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const input=$('j-input'), mic=$('j-mic'), wake=$('j-wake'), bell=$('j-bell'), ans=$('j-answer'),
+        liveBtn=$('j-live'), brainEl=$('j-brain'),
+        status=$('j-status'), wrap=$('jarvis'), tasksEl=$('j-tasks'), tasksList=$('j-tasks-list'), orb=$('j-orb'), screenBtn=$('j-screen'),
+        inboxEl=$('j-inbox'), inboxList=$('j-inbox-list');
+  let busy=false, pending=null, pendingCall=null, pendingOs=null, orbSpeak=false, orbThink=false, lastNote='', lastLinks=[];  // pending = drafted agent action; pendingCall = phone call awaiting "do it"; pendingOs = housekeeping plan awaiting "do it"; lastNote = last answer to read aloud; lastLinks = URLs from the last answer ("open it")
+  const askQ=[];                       // committed-task law (2026-08-26): speech during a running task queues here, never derails it
+  const SID='s'+Math.random().toString(36).slice(2);    // session id → conversation memory
+
+  // ---- the reactor is DRAGGABLE (TARS parity): grab the orb, park it anywhere — it remembers.
+  // The state label and brain chip travel with it; double-click sends it home; a plain click
+  // gets a little wake ripple. Position persists in localStorage across reloads.
+  (function orbDrag(){
+    if(!orb) return;
+    const stateEl=$('j-state');
+    let off={x:0,y:0}, drag=null;
+    function apply(){
+      const w=innerWidth, h=innerHeight;
+      if(w>300 && h>300){                                     // keep the disc inside the window —
+        off.x=Math.max(-(w-238), Math.min(34, off.x));        // but never clamp against a degenerate
+        off.y=Math.max(110-0.46*h, Math.min(0.54*h-110, off.y));   // (hidden/minimized) 0-size viewport
+      }
+      orb.style.transform=`translate(${off.x}px, calc(-50% + ${off.y}px))`;
+      const t=`translate(${off.x}px, ${off.y}px)`;
+      if(stateEl) stateEl.style.transform=t;
+      if(brainEl) brainEl.style.transform=t;
+    }
+    try{ const s=JSON.parse(localStorage.getItem('jarvis-orb-pos')||'null');
+      if(s && isFinite(s.x) && isFinite(s.y)){ off=s; apply(); } }catch(e){}
+    orb.addEventListener('pointerdown', e=>{
+      drag={sx:e.clientX, sy:e.clientY, ox:off.x, oy:off.y, moved:false};
+      orb.style.cursor='grabbing';
+      try{ orb.setPointerCapture(e.pointerId); }catch(_){}
+      e.preventDefault();
+    });
+    orb.addEventListener('pointermove', e=>{
+      if(!drag) return;
+      const dx=e.clientX-drag.sx, dy=e.clientY-drag.sy;
+      if(Math.abs(dx)+Math.abs(dy)>4) drag.moved=true;
+      off={x:drag.ox+dx, y:drag.oy+dy}; apply();
+    });
+    const end=()=>{
+      if(!drag) return;
+      const moved=drag.moved; drag=null; orb.style.cursor='grab';
+      if(moved){ try{ localStorage.setItem('jarvis-orb-pos', JSON.stringify(off)); }catch(_){} }
+      else { try{ window.__fx&&window.__fx.wake&&window.__fx.wake(); }catch(_){} }
+    };
+    orb.addEventListener('pointerup', end);
+    orb.addEventListener('pointercancel', end);
+    orb.addEventListener('dblclick', ()=>{ off={x:0,y:0}; apply();
+      try{ localStorage.removeItem('jarvis-orb-pos'); }catch(_){} });
+    addEventListener('resize', apply);
+    window.__jarvisOrbPos=()=>({...off});                     // test/debug hook
+  })();
+  const escHtml=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  // presence orb + state label: speaking > thinking > listening > idle — always visible under the HUD
+  const STATE_STYLE={speak:['SPEAKING','#7dffd9',1], think:['THINKING','#ffd06a',1],
+                     listen:['LISTENING','#34d399',1], idle:['ONLINE','#5a6b62',0]};
+  function renderOrb(){ if(!orb) return;
+    const s = orbSpeak ? 'speak' : orbThink ? 'think' : (wakeOn||micActive||awaitingCmd) ? 'listen' : 'idle';
+    orb.className = 'is-'+s;
+    const st=$('j-state'), stTxt=$('j-state-txt');
+    if(st&&stTxt){ const [label,color,pulse]=STATE_STYLE[s];
+      stTxt.textContent=label; st.style.color=color; st.classList.toggle('pulse', !!pulse); } }
+  // build the HUD's repetitive bits: graduation ticks, core "radiator" spokes, blinking data dots
+  function buildHud(){
+    const NS='http://www.w3.org/2000/svg', C=100;
+    const ticks=$('hud-ticks'), dots=$('hud-dots'), spokes=$('hud-spokes');
+    if(!ticks || ticks.childNodes.length) return;
+    const line=(g,a,r1,r2)=>{ const rad=a*Math.PI/180, l=document.createElementNS(NS,'line');
+      l.setAttribute('x1',(C+r1*Math.cos(rad)).toFixed(2)); l.setAttribute('y1',(C+r1*Math.sin(rad)).toFixed(2));
+      l.setAttribute('x2',(C+r2*Math.cos(rad)).toFixed(2)); l.setAttribute('y2',(C+r2*Math.sin(rad)).toFixed(2)); g.appendChild(l); };
+    for(let i=0;i<72;i++) line(ticks, i*5, i%6===0?84:89, 96);     // long tick every 30°
+    for(let i=0;i<12;i++) line(spokes, i*30, 13, 22);             // core radiator spokes
+    for(let i=0;i<5;i++){ const rad=(-66+i*20)*Math.PI/180, d=document.createElementNS(NS,'circle');
+      d.setAttribute('cx',(C+74*Math.cos(rad)).toFixed(2)); d.setAttribute('cy',(C+74*Math.sin(rad)).toFixed(2));
+      d.setAttribute('r','1.7'); d.setAttribute('class','dot'); d.style.animationDelay=(i*0.32)+'s'; dots.appendChild(d); }
+  }
+  buildHud();
+
+  fetch('/api/brand').then(r=>r.ok?r.json():Promise.reject()).then(b=>{ orb.style.display='block'; renderOrb(); boot(b); refreshTasks(); startProactive();
+      /* page refresh = back to the boot brain, silently (his 2026-08-26 decree) */
+      fetch('/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'default',quiet:1})})
+        .then(r=>r.json()).then(m=>setBrainBadge(m.model,m.default))
+        .catch(()=>{ fetch('/api/model').then(r=>r.json()).then(m=>setBrainBadge(m.model,m.default)).catch(()=>{}); });
+      fetch('/api/persona').then(r=>r.json()).then(ps=>setSkinChip(ps.label,ps.skin)).catch(()=>{}); })
+    .catch(()=>{ wrap.style.display='none'; tasksEl.style.display='none'; orb.style.display='none'; });
+
+  // POST with a timeout so a hung request can never permanently lock the assistant (or the mic)
+  const post=(path,body,ms)=>{ const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(), ms||35000);
+    return fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{}),signal:ctl.signal})
+      .then(r=>r.json()).then(d=>{ nativeMark(d); return d; }).finally(()=>clearTimeout(t)); };
+  // ---- multilingual mode, canned lines (2026-10-07): the brain already answers in the active
+  // language; the desk's OWN fixed lines ("I've pulled up all the information, sir…") and raw note
+  // read-backs don't. Anything spoken or shown that the server didn't write itself goes through
+  // /xlate once (cached server-side + here). English mode: none of this runs.
+  const NATIVE_TXT=new Set();                       // text the server already wrote in the active language
+  function nativeMark(d){ try{ if(!d||typeof d!=='object') return; if(NATIVE_TXT.size>300) NATIVE_TXT.clear();
+    ['answer','line'].forEach(k=>{ if(typeof d[k]==='string'&&d[k]) NATIVE_TXT.add(d[k]); }); }catch(_){} }
+  const XL=new Map(), XLV=new Map();
+  function xlNeeded(t){ return !!(window.__jarvisLang && t && !NATIVE_TXT.has(t) && /[A-Za-z]{3}/.test(t)); }
+  function loc(t){
+    const k=(window.__jarvisLang||'')+'|'+t;
+    if(XL.has(k)) return XL.get(k);
+    const p=post('/xlate',{text:t},20000).then(d=>(d&&typeof d.text==='string'&&d.text)||t).catch(()=>t);
+    XL.set(k,p); p.then(v=>{ if(v===t) XL.delete(k); else { XLV.set(k,v); NATIVE_TXT.add(v); } });
+    return p;
+  }
+  // warm the lines he hears most, the moment the language changes (lang.js fires 'jarvis-lang')
+  const XL_WARM=["I've pulled up all the information, sir. You can read it yourself — or if you'd like, say “read it out loud” and I shall.",
+                 "Nothing pulled up to read just now, sir — ask me for something first.", "Stood down, sir.", "Opening it now, sir."];
+  function xlWarm(){ if(!window.__jarvisLang) return;
+    XL_WARM.forEach(l=>loc(l)); try{ Object.values(ACKS).flat().forEach(l=>loc(l)); }catch(_){} }
+  window.addEventListener('jarvis-lang', xlWarm); setTimeout(xlWarm, 5000);
+  function nodeCount(){ try{return window.__os.data.nodes.length;}catch(e){return 0;} }
+  // ElevenLabs v3 audio tags ([sighs], [pause]…) are voice directions — never show them on screen
+  const TAGSTRIP=/\[(?:sighs?|pause|flatly|dryly|whispers?|muttering|laughs?|drawn\s?out|exhales?|clears throat)\]\s*/gi;
+  const stripTags=t=>String(t==null?'':t).replace(TAGSTRIP,'').trim();
+  // read like a butler, not a screen reader: "$97/mo" → "$97 a month", markdown/URLs dropped.
+  // (The ElevenLabs path gets the same treatment server-side in /tts; this covers the browser voice.)
+  const SPKUNIT={mo:'month',month:'month',yr:'year',year:'year',wk:'week',week:'week',day:'day',hr:'hour',hour:'hour',min:'minute'};
+  function speakable(t){
+    t=String(t==null?'':t).replace(/[’‘]/g,"'").replace(/[“”]/g,'"');
+    // technical garbage never gets read aloud — JSON payloads, UUIDs, hex ids, error codes
+    const hadTech=/\{\s*"|\bjsonrpc\b|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(t);
+    t=t.replace(/\{\s*"[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g,' ');
+    t=t.replace(/\(\s*\{[^)]*\)/g,' ');
+    t=t.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,'');
+    t=t.replace(/\b[0-9a-f]{12,}\b/gi,'');
+    t=t.replace(/\b(?:error\s*)?codes?"?\s*[:=]\s*-?\d+\b/gi,'');
+    t=t.replace(/\bjsonrpc\b[^,.;]*/gi,'');
+    if(hadTech){
+      t=t.replace(/\s+([.,;])/g,'$1');
+      t=t.replace(/\s{2,}/g,' ').trim();
+      if(!/on (?:your|the) screen/i.test(t)) t=(t?t.replace(/\.$/,'')+'. ':'')+'The technical detail is on your screen, sir.';
+    }
+    t=t.replace(/https?:\/\/\S+|www\.\S+|\b[a-z0-9][\w.-]*\.(?:com|ai|io|net|org|dev|app|co|me|so|xyz|gg|page|site|design|link)\/\S+/gi,'');   // URLs (incl. bare canva.com/d/…) are for the screen
+    t=t.replace(/[*_`#]+/g,'');
+    t=t.replace(/\/\s*(mo|month|yr|year|wk|week|day|hr|hour|min)s?\b/gi,(m,u)=>' a '+SPKUNIT[u.toLowerCase()]);
+    t=t.replace(/(\d)\s*\/\s*(user|seat|person|license|email|contact|subscriber)s?\b/gi,(m,d,u)=>d+' per '+u.toLowerCase());
+    t=t.replace(/\bper\s+(mo|yr|wk|hr)\b/gi,(m,u)=>'per '+SPKUNIT[u.toLowerCase()]);
+    t=t.replace(/(\w)\s*\/\s*(\w)/g,'$1 $2');
+    t=t.replace(/(\d)\s*%/g,'$1 percent').replace(/\s*&\s*/g,' and ').replace(/([0-9kKmM])\s*\+(?!\d)/g,'$1 plus');
+    t=t.replace(/~\s*(?=[\d$€£])/g,'about ').replace(/\bvs\.?(?=\s|$)/gi,'versus');
+    t=t.replace(/\be\.g\.,?\s*/g,'for example, ').replace(/\bi\.e\.,?\s*/g,'that is, ');
+    t=t.replace(/\s+[–—]\s+|\s+--\s+/g,', ').replace(/[•▪◦]/g,',');
+    t=t.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}]/gu,'');
+    return t.replace(/\s{2,}/g,' ').trim();
+  }
+  // any URL in an answer becomes a LIVE link on screen (DOM nodes, never innerHTML — XSS-safe)
+  const URL_RE=/(https?:\/\/[^\s<>"')\]]+|\b[a-z0-9][\w.-]*\.(?:com|ai|io|net|org|dev|app|co|me|so|xyz|gg|page|site|design|link)\/[^\s<>"')\]]+)/gi;
+  let shownSrc='';
+  function showLine(t){
+    window.__jarvisShownAt=Date.now();               // EYES: expression reactions key off "an answer is fresh on screen"
+    const raw=String(t==null?'':t); shownSrc=raw;
+    if(xlNeeded(raw)){                                // multilingual: a cached translation shows at once; a new one swaps in
+      const ready=XLV.get((window.__jarvisLang||'')+'|'+raw);
+      if(ready){ t=ready; shownSrc=ready; }
+      else loc(raw).then(v=>{ if(v!==raw && shownSrc===raw) showLine(v); });
+    }
+    t=stripTags(t); ans.textContent='';
+    URL_RE.lastIndex=0; let last=0, m;
+    while((m=URL_RE.exec(t))){
+      ans.appendChild(document.createTextNode(t.slice(last, m.index)));
+      const href=(/^https?:/i.test(m[0])?'':'https://')+m[0];
+      let hostOk=true; try{ const hh=new URL(href).hostname.toLowerCase(); hostOk=!(hh==='localhost'||hh==='127.0.0.1'||hh==='[::1]'||hh.endsWith('.localhost')); }catch(_){ hostOk=false; }
+      if(!hostOk){ ans.appendChild(document.createTextNode(m[0])); last=m.index+m[0].length; continue; }   // S23: never a live link back into this desk
+      const a=document.createElement('a');
+      a.href=href;
+      a.target='_blank'; a.rel='noopener'; a.textContent=m[0];
+      a.style.cssText='color:#7dffd9;text-decoration:underline;text-underline-offset:2px;word-break:break-all;';
+      ans.appendChild(a);
+      last=m.index+m[0].length;
+    }
+    ans.appendChild(document.createTextNode(t.slice(last)));
+    ans.style.display='block';
+  }
+
+  // live audio analyser → drives the central lobe's glow (--beat) in rhythm with Jarvis's voice
+  let actx=null, ana=null, abuf=null, raf=0, curAudio=null;
+  function audioCtx(){
+    if(!actx){ try{ actx=new (window.AudioContext||window.webkitAudioContext)(); ana=actx.createAnalyser();
+      ana.fftSize=256; ana.smoothingTimeConstant=0.8; abuf=new Uint8Array(ana.frequencyBinCount); }catch(e){ actx=null; } }
+    if(actx && actx.state==='suspended') actx.resume().catch(()=>{});
+    return actx;
+  }
+  function reactStart(a){
+    const c=audioCtx(); if(!c || c.state!=='running' || !ana) return false;   // can't analyse → plain playback
+    try{ const src=c.createMediaElementSource(a); src.connect(ana); ana.connect(c.destination); }catch(e){ return false; }
+    cancelAnimationFrame(raf);
+    const loop=()=>{ ana.getByteFrequencyData(abuf); let s=0; for(let i=2;i<abuf.length;i++) s+=abuf[i];
+      const lvl=Math.max(0, Math.min(1, (s/(abuf.length-2))/88));
+      if(orb) orb.style.setProperty('--beat', lvl.toFixed(3)); window.__voiceLevel=lvl; raf=requestAnimationFrame(loop); };
+    loop(); return true;
+  }
+  function reactStop(){ cancelAnimationFrame(raf); raf=0; if(orb) orb.style.setProperty('--beat','0'); window.__voiceLevel=0; }
+  ['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev, audioCtx, {once:true}));  // resume audio on first gesture
+
+  // speak with a hard ceiling so a TTS hiccup / muted device never hangs the queue.
+  // In hands-free mode the wake recogniser keeps listening so you can interrupt (barge in).
+  // VOICE: by default Jarvis speaks in the browser's own voice (no key needed). Add an ElevenLabs
+  // api_key + voice_id to config.json for the premium butler voice — then /tts wins automatically.
+  // the room is Jarvis's body: tell the server when the voice starts/stops so the lights can react
+  function jhue(event){ try{ window.__fx&&window.__fx.audio&&window.__fx.audio(event); }catch(e){}
+    try{ fetch('/hue_event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event})}); }catch(e){} }
+
+  // ---- spoken acknowledgments: if a request is taking a while, Jarvis says so instead of going silent.
+  // The ack fires only if the work hasn't finished within `ms` — fast replies stay snappy, slow ones
+  // get a "One moment, sir" so the user knows he's on it. Awaiting settle() keeps speech in order.
+  const ACKS={
+    think:["One moment, sir.","Let me think on that, sir.","Working on it, sir.","Give me a second, sir."],
+    fetch:["Fetching that now, sir.","Let me pull that up, sir.","One moment, sir — retrieving.","Right away, sir."],
+    look: ["Let me have a look, sir.","Scanning now, sir.","One moment — eyes on it, sir."],
+    agent:["On it, sir.","Right away, sir — this may take a moment.","Consider it underway, sir."],
+    web:  ["Consulting the internet, sir.","On the wires now, sir — a moment.","Searching as we speak, sir.","Let me see what the internet has to say, sir."],
+    progress:["Still on it, sir.","Sir, still checking — the wires are being fashionably slow.","Working, sir. The internet is taking its sweet time.","A moment more, sir — I shall not return empty-handed.","Still digging, sir. Patience is a virtue I'm performing on your behalf.","Nearly there, sir. Allegedly.","Still at it, sir — good help really is hard to find.","Any second now, sir. I've seen glaciers with worse response times."]};
+  function delayedAck(kind, ms){
+    let spoke=null;
+    const t=setTimeout(()=>{ if(speaking||liveKind) return;            // never talk over himself or a live call
+      const pool=ACKS[kind]||ACKS.think;
+      spoke=speak(pool[Math.floor(Math.random()*pool.length)]); }, ms==null?900:ms);
+    return { async settle(){ clearTimeout(t); if(spoke){ try{ await spoke; }catch(e){} } } };
+  }
+  // ---- progress HEARTBEAT for long tool work: never more than ~4s of silence. An opening ack,
+  // then a rotating witty status line 4s after each previous line ENDS, until settle() — which
+  // also awaits any line mid-air so the real answer never talks over it.
+  // "stop updating me" hush: progressLive holds the ACTIVE heartbeat's kill switch so the HUSH
+  // voice intent (armed only while a heartbeat is ticking) can silence updates for THIS task —
+  // the task keeps running and its final answer still speaks.
+  let progressLive=null;
+  const HUSH=/\b(?:that'?s (?:ok(?:ay)?|fine)|no need (?:to|for) (?:keep\s+)?(?:updat|check)\w*|don'?t (?:have to|need to) (?:keep\s+)?(?:me\s+)?(?:updat\w*|posted|informed)|stop (?:the )?updat(?:es|ing)|no more updates|(?:just\s+)?(?:get|come) back to me when|(?:just\s+)?let me know (?:once|when) (?:it'?s|you'?re) done|quiet until)\b/i;
+  function hushProgress(){ if(progressLive){ progressLive(); progressLive=null; return true; } return false; }
+  function progressAck(firstMs, pool){
+    let stopped=false, cur=null, timer=0, i=Math.floor(Math.random()*ACKS.progress.length);
+    const hush=()=>{ stopped=true; clearTimeout(timer); };
+    progressLive=hush;
+    const sayLine=async(line)=>{ if(stopped) return;
+      if(speaking||liveKind||vad.hold){ schedule(1500); return; }      // wrong moment — try again shortly
+      console.debug('[ack] progress:', line);
+      cur=speak(line); try{ await cur; }catch(e){} cur=null;
+      schedule(5000); };                                               // ~5s between status lines (was 4 — 3s felt naggy)
+    const schedule=(ms)=>{ if(stopped) return; clearTimeout(timer);
+      timer=setTimeout(()=>sayLine(ACKS.progress[i++ % ACKS.progress.length]), ms); };
+    const opener=ACKS[pool]||ACKS.agent||['On it, sir.'];
+    timer=setTimeout(()=>sayLine(opener[Math.floor(Math.random()*opener.length)]), firstMs==null?1200:firstMs);
+    return { async settle(){ stopped=true; clearTimeout(timer); if(progressLive===hush) progressLive=null;
+      if(cur){ try{ await cur; }catch(e){} } } };
+  }
+  // ---- chunked speech: long reports split at sentence boundaries into a GAPLESS queue (the next
+  // chunk's audio is fetched while the current one plays). One bad chunk — a decode stall, an
+  // engine limit, a TTS hiccup — now loses at most ~30s of speech and the queue carries on
+  // (user-reported: long reads kept dying partway; a single Audio object was one point of failure).
+  let speakSeq=0;                                    // cutVoice bumps this → queued chunks are abandoned
+  function splitSpeech(t){
+    t=String(t);
+    if(t.length<=460) return [t];
+    const segs=t.match(/[\s\S]*?[.!?…]+["')\]]*(?:\s+|$)|[\s\S]+$/g)||[t];   // enders only count before whitespace — "3.5" never splits
+    const parts=[]; let cur='';
+    for(const s of segs){
+      if(cur && (cur+s).length>460){ parts.push(cur.trim()); cur=s; }
+      else cur+=s;
+    }
+    if(cur.trim()) parts.push(cur.trim());
+    return parts.length?parts:[t];
+  }
+  function ttsFetch(text){
+    return fetch('/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})})
+      .then(r=>r.ok?r.blob():null).catch(()=>null);
+  }
+  function playTts(b, text){
+    if(!b) return speakBrowser(text);                // no ElevenLabs → browser voice
+    orbSpeak=true; renderOrb(); jhue('speak_start');
+    if(!wakeOn) wakePause(true);                     // push-to-talk: nothing to barge into
+    spoken=String(text); speaking=true;              // hands-free: stay live so "Jarvis, …" can cut in
+    const a=new Audio(URL.createObjectURL(b)); curAudio=a;
+    reactStart(a);                                   // analyser drives the core glow (graceful fallback if unavailable)
+    a.play().catch(()=>{});
+    const done=new Promise(res=>{ a.onended=res; a.onerror=res; });
+    // hang WATCHDOG, not a length cap: finish this CHUNK only when playback makes no progress for
+    // ~6s with no VAD hold — and the queue then simply moves to the next chunk.
+    let wd=0;
+    const cap=new Promise(res=>{ let last=-1, lastMove=Date.now();
+      wd=setInterval(()=>{                     // wall-clock stall check — tick THROTTLING in a
+        const t=a.currentTime, held=(vad.hold && vad.hold.a===a)||(eyesHold && eyesHold.a===a);   // hidden tab can't stretch it; a look-away pause isn't a stall
+        if(held || t!==last) lastMove=Date.now();
+        else if(Date.now()-lastMove>6500){ console.debug('[speak] stall watchdog fired at t='+a.currentTime.toFixed(1)+'s — skipping to next chunk'); res(); }
+        last=t;
+      }, 1000); });
+    return Promise.race([done,cap]).then(()=>{ clearInterval(wd); try{a.pause();}catch(e){} if(curAudio===a) curAudio=null;
+      reactStop(); orbSpeak=false; renderOrb(); speaking=false; spoken=''; jhue('speak_end');
+      vadHoldClear();                              // this chunk is over — a pending VAD hold must never resume it
+      if(!wakeOn) wakePause(false); });
+  }
+  // ---- EYES attention hold (V7): eyes.js calls attnHold on look-away/look-back transitions.
+  // It only ever pauses/resumes the sentence ALREADY playing — it never blocks a new speak()
+  // from starting and never touches the DV gate below. Mirrors vadCut/vadResume's own guards;
+  // the stall watchdogs treat an eyes hold like a VAD hold (paused ≠ stalled).
+  let eyesHold=null;                                 // {a} — a=the paused Audio, a:null=browser voice
+  function attnHold(on){
+    if(on){
+      if(eyesHold || window.__handsActive || liveKind) return false;   // drives + live calls own their voice
+      const a=curAudio;
+      if(a && !a.paused){ try{a.pause();}catch(e){} eyesHold={a}; }
+      else if(!a && window.speechSynthesis && speaking){ try{speechSynthesis.pause();}catch(e){} eyesHold={a:null}; }
+      return !!eyesHold;
+    }
+    const h=eyesHold; eyesHold=null;
+    if(!h) return false;
+    if(vad.hold) return true;                        // his voice holds the floor — VAD's resume owns it
+    try{ if(h.a){ if(curAudio===h.a) h.a.play(); }   // only replay a sentence we still own (cutVoice kills ownership)
+         else if(window.speechSynthesis && speaking) speechSynthesis.resume(); }catch(e){}
+    return true;
+  }
+  // ?mute=1 — a SILENT viewer tab (S19e, his law): Claude's background test tabs load with
+  // this so probing/refreshing never speaks through his speakers. Guards the ONE voice door
+  // (every path — boot greeting, acks, TTS, browser voice — rides speak()).
+  const MUTETAB=new URLSearchParams(location.search).has('mute');
+  function speak(text){
+    if(MUTETAB) return Promise.resolve();
+    text=String(text==null?'':text);
+    if(text.charCodeAt(0)!==0x2063 && xlNeeded(text))  // multilingual: a canned English line → the active language first
+      return loc(text).then(v=>{ NATIVE_TXT.add(v); return speak(v); });
+    // a takeover drive OWNS the voice (2026-08-18: narration + a chat answer/proactive card
+    // spoke over each other — "two Jarvises"). Drive speech arrives marked with U+2063 from
+    // hands.js; while hands are active, anything UNMARKED renders on screen only. The mark
+    // rides the payload (not a flag) so a long narration line can't leak others through.
+    const driveMarked=text.charCodeAt(0)===0x2063;
+    if(driveMarked) text=text.slice(1);
+    else if(window.__handsActive) return Promise.resolve();
+    // never READ a URL aloud — the screen has it as a live link; the voice just points there
+    URL_RE.lastIndex=0;
+    const links=text.match(URL_RE)||[];
+    if(links.length){
+      lastLinks=links.map(u=>(/^https?:/i.test(u)?'':'https://')+u);
+      text=text.replace(URL_RE,'').replace(/[ \t]{2,}/g,' ');
+      text+=links.length>1
+        ? ` The links are on your screen, sir — say "open it" for the first, or "open link two".`
+        : ' The link is on your screen, sir — say "open it" and I shall bring it up.';
+    }
+    const parts=splitSpeech(text);
+    const seq=speakSeq;                              // the moment anything cutVoice()s, this goes stale
+    if(parts.length===1) return ttsFetch(parts[0]).then(b=>playTts(b, parts[0]));
+    console.debug('[speak] long read — '+parts.length+' chunks queued');
+    return (async()=>{
+      let pending=ttsFetch(parts[0]);
+      for(let i=0;i<parts.length;i++){
+        const b=await pending;
+        if(i+1<parts.length) pending=ttsFetch(parts[i+1]);   // prefetch: the queue stays gapless
+        if(speakSeq!==seq) return;                   // interrupted → the rest of the report stays unsaid
+        console.debug('[speak] chunk '+(i+1)+'/'+parts.length);
+        await playTts(b, parts[i]);
+        if(speakSeq!==seq) return;
+      }
+    })();
+  }
+  // ---- browser voice (the default, free, no-key Jarvis voice) ----
+  let _voices=[];
+  function loadVoices(){ try{ _voices=window.speechSynthesis?speechSynthesis.getVoices():[]; }catch(e){ _voices=[]; } }
+  if(window.speechSynthesis){ loadVoices(); try{ speechSynthesis.onvoiceschanged=loadVoices; }catch(e){} }
+  function pickVoice(){
+    if(!_voices.length) loadVoices();
+    const L=String(window.__jarvisLang||'').split('-')[0].toLowerCase();   // multilingual mode: match the active tongue
+    if(L && L!=='en'){ const m=_voices.find(v=>v.lang&&v.lang.toLowerCase().startsWith(L)); if(m) return m; }
+    return _voices.find(v=>/en-GB/i.test(v.lang)&&/(daniel|arthur|george|oliver|male)/i.test(v.name))   // a British butler if we can
+        || _voices.find(v=>/en-GB/i.test(v.lang))
+        || _voices.find(v=>/^en[-_]/i.test(v.lang)) || _voices[0] || null;
+  }
+  function speakBrowser(text){
+    return new Promise(res=>{
+      const ss=window.speechSynthesis;
+      if(!ss){ return res(); }                            // no speech API → silent, but never hangs the queue
+      try{ ss.cancel(); try{ ss.resume(); }catch(e){}     // clear any stale VAD pause before queueing
+        const u=new SpeechSynthesisUtterance(speakable(stripTags(String(text))));   // tags are for the v3 engine only
+        const v=pickVoice(); if(v) u.voice=v;
+        u.rate=1.02; u.pitch=0.95;
+        orbSpeak=true; renderOrb(); jhue('speak_start');
+        if(!wakeOn) wakePause(true);
+        spoken=String(text); speaking=true;
+        const t0=Date.now(); const iv=setInterval(()=>{ const bv=0.26+0.46*Math.abs(Math.sin((Date.now()-t0)/130)); if(orb) orb.style.setProperty('--beat',bv.toFixed(3)); window.__voiceLevel=bv; },80);  // synthetic glow (no analyser on this path)
+        let done=false, wd=0;
+        const fin=()=>{ if(done) return; done=true; clearInterval(iv); clearInterval(wd); if(orb) orb.style.setProperty('--beat','0'); window.__voiceLevel=0;
+          orbSpeak=false; renderOrb(); speaking=false; spoken=''; jhue('speak_end'); vadHoldClear(); if(!wakeOn) wakePause(false); res(); };
+        u.onend=fin; u.onerror=fin;
+        // no length ceiling (the old 22s cap cut long answers off a third in). Instead: Chrome
+        // silently kills utterances ~15s in unless nudged with pause/resume, and a stall watchdog
+        // (word-boundary heartbeat) releases the queue only if speech is genuinely dead.
+        let lastBeat=Date.now(), sawB=false;
+        u.onboundary=()=>{ sawB=true; lastBeat=Date.now(); };
+        wd=setInterval(()=>{
+          if((vad.hold && !vad.hold.a)||(eyesHold && !eyesHold.a)){ lastBeat=Date.now(); return; }   // a VAD/eyes pause isn't a stall — and the nudge below must not resume a held sentence
+          try{ ss.pause(); ss.resume(); }catch(e){}                     // the anti-15s-death nudge
+          if(sawB ? (Date.now()-lastBeat>20000)
+                  : (Date.now()-t0>Math.max(12000, 1800+String(text).length*110))) fin();
+        }, 10000);
+        ss.speak(u);
+      }catch(e){ res(); }
+    });
+  }
+  function flyTo(ids){
+    if(!window.__os||!ids||!ids.length) return;
+    if(ids.length>6 && window.__os.lightNodes) window.__os.lightNodes(ids);   // synthesis → light the cluster
+    else { const nodes=window.__os.data.nodes; const t=ids.map(i=>nodes[i]).find(Boolean); if(t) window.__os.onNodeClick(t); }
+  }
+  function boot(brand){
+    const greet='Hello, sir.';                      // his call 2026-09-17: no "online / notes indexed" spiel on launch or refresh
+    setTimeout(()=>speak(greet), 700);
+  }
+
+  // ---- tasks panel ----
+  function renderTasks(tasks){
+    if(!tasks||!tasks.length){ tasksEl.style.display='none'; return; }
+    tasksEl.style.display='block';
+    tasksList.innerHTML=tasks.map((t,i)=>`<div class="jt"><span class="jt-c" data-i="${i}">○</span><span>${escHtml(t.text)}</span></div>`).join('');
+    tasksList.querySelectorAll('.jt-c').forEach(el=>el.onclick=()=>post('/task_done',{index:+el.dataset.i}).then(d=>renderTasks(d.tasks)));
+  }
+  function refreshTasks(){ post('/tasks',{}).then(d=>renderTasks(d.tasks)).catch(()=>{}); }
+
+  // ---- agent inbox: cards raised by background daemons; governor decides what speaks ----
+  const ICON={notify:'•',ask:'?',approve:'✓'};
+  function renderInbox(cards){
+    if(!inboxEl) return;
+    const open=(cards||[]).filter(c=>c.status!=='dismissed'&&c.status!=='done');
+    const nb=$('j-inbox-n');
+    if(!open.length){ inboxEl.style.display='none'; return; }
+    inboxEl.style.display='block';
+    if(nb){ nb.textContent=open.length; nb.style.display='inline-block'; }
+    inboxList.innerHTML=open.slice(0,8).map(c=>{
+      const hi=c.priority==='high'?' jc-hi':'';
+      const act=c.type==='approve'
+        ? `<button class="jc-do" data-id="${escHtml(c.id)}">Do it, sir</button><button class="jc-x" data-id="${escHtml(c.id)}">Dismiss</button>`
+        : `<button class="jc-x" data-id="${escHtml(c.id)}">Got it</button>`;
+      return `<div class="jc${hi}"><div class="jc-t">${ICON[c.type]||'•'} ${escHtml(c.title)}</div>`+
+             (c.body?`<div class="jc-b">${escHtml(c.body)}</div>`:'')+
+             (c.type==='approve'&&c.action?`<div class="jc-b" style="opacity:.75">▶ will run: ${escHtml(String(c.action).slice(0,300))}</div>`:'')+   // S23: you see what "Do it" runs
+             `<div class="jc-a">${act}</div></div>`;
+    }).join('');
+    inboxList.querySelectorAll('.jc-do').forEach(el=>el.onclick=async()=>{ if(busy)return; busy=true; el.disabled=true; status.textContent='● executing…';
+      try{ const d=await post('/inbox_act',{id:el.dataset.id},240000); status.textContent=''; if(d&&d.answer){ showLine(d.answer); await speak(d.answer);} renderInbox((d&&d.cards)||[]); }
+      finally{ busy=false; } });
+    inboxList.querySelectorAll('.jc-x').forEach(el=>el.onclick=async()=>{ const d=await post('/inbox_dismiss',{id:el.dataset.id}); renderInbox(d.cards); });
+  }
+  async function inboxPoll(){
+    try{ const d=await fetch('/api/inbox').then(r=>r.json()); renderInbox(d.cards);
+      const speakable=(d.cards||[]).filter(c=>c.speak);
+      if(speakable.length && !busy){ busy=true; const c=speakable[0];
+        try{ const line=c.title+(c.body?'. '+c.body:''); showLine(line); await speak(line); }
+        finally{ await post('/inbox_ack',{id:c.id}).catch(()=>{}); busy=false; } }
+    }catch(e){}
+  }
+  async function readQueue(){
+    const d=await fetch('/api/inbox').then(r=>r.json()).catch(()=>({cards:[]}));
+    const open=(d.cards||[]).filter(c=>c.status!=='dismissed'&&c.status!=='done'); renderInbox(d.cards);
+    const l=!open.length?"Your inbox is clear, sir — nothing's waiting."
+      :`${open.length} item${open.length>1?'s':''} in your inbox, sir: `+open.slice(0,4).map(c=>c.title).join('; ')+'.';
+    lastNote=l; showLine(l); await speak(l);
+  }
+  async function setDnd(on){ await post('/dnd',{focus:on});
+    const l=on?"Focus mode on, sir — I'll hold everything but the genuinely urgent."
+             :"Focus mode off, sir — you have my full attention again.";
+    showLine(l); await speak(l); }
+  async function setStrict(on){ strict=on; try{ localStorage.setItem('jarvis-strict', on?'1':'0'); }catch(e){}
+    const l=on?"Strict mode, sir — I shall only respond when you say my name. Nothing else gets a word in."
+             :"Relaxed mode, sir — after I reply, you may follow up without saying my name.";
+    showLine(l); await speak(l); }
+  // time machine: recall what happened on a day (or when something was first mentioned) + rewind the graph
+  async function doRecall(q){
+    status.textContent='● rewinding…';
+    const ack=delayedAck('fetch', 1100);
+    const d=await post('/recall',{when:q}, 60000); await ack.settle(); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    lastNote=d.answer; showLine(d.answer);
+    if(d.nodes&&d.nodes.length) flyTo(d.nodes);   // the graph flies back to that moment
+    await speak(d.answer);
+  }
+  // ---- live web research ("research X / look up Y") — the fast internet path.
+  // NOT the /agent path (no claude -p startup, no draft gate: reading the web is safe) and NOT
+  // /chat (which stays offline by design so normal replies keep their ~2-3s snap).
+  async function doResearch(q){
+    status.textContent='● researching…'; ans.style.display='none';
+    const ack=progressAck(900, 'web');                // searches take 10-30s — heartbeat, not one ack then silence
+    const d=await post('/research',{question:q, session:SID}, 150000);
+    await ack.settle(); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    const srcs=(d.sources&&d.sources.length)?'\n\nSources: '+d.sources.map(s=>s.title||s.url).join('  ·  '):'';
+    lastNote=d.answer+srcs; showLine(lastNote);       // sources on screen; only the answer is spoken
+    inboxPoll();                                      // the 🌐 "What I found" card slides in top-right, and stays
+    await speak(d.answer);
+  }
+  // pocket status: "Jarvis, pocket code" / "pair my phone" — pairing + status for the Telegram bridge
+  async function doPocket(){
+    const d=await fetch('/api/pocket').then(r=>r.json()).catch(()=>null);
+    let l;
+    if(!d) l="The pocket bay isn't answering, sir.";
+    else if(!d.configured) l="No pocket line yet, sir — message BotFather on Telegram, make a bot in two minutes, and paste its token under telegram in config.json. Then I travel.";
+    else if(d.code) l="Your pairing code is "+d.code.split('').join(', ')+", sir. Text it to the bot and your phone joins the brain.";
+    else l="Your phone is paired, sir"+(d.who&&d.who.length?" — "+d.who.join(", ")+".":".")+" Text me anywhere; it all lands in the graph.";
+    showLine(l); await speak(l);
+  }
+  // "research THIS" while sharing: the screenshot rides along so the web search knows what
+  // "this" is, and the answer comes back as a spoken REPORT — the conversation stays free
+  // while the search runs, and Jarvis waits for a quiet moment before reading it out.
+  function whenQuiet(fn,t){ if((busy||speaking)&&(t||0)<360) setTimeout(()=>whenQuiet(fn,(t||0)+1),500); else fn(); }
+  async function doResearchScreen(q){
+    const img=await grabFrame();
+    if(!img) return doResearch(q);                    // the share died mid-ask → plain research
+    const l="Very good, sir — let me do some digging on that. I shall report back the moment I have the details.";
+    showLine(l); await speak(l);
+    status.textContent='● researching the screen…';
+    post('/research',{question:q, session:SID, image:img}, 150000).then(d=>{
+      status.textContent='';
+      whenQuiet(()=>{
+        if(d.error){ showLine(d.error); return speak(d.error); }
+        const srcs=(d.sources&&d.sources.length)?'\n\nSources: '+d.sources.map(s=>s.title||s.url).join('  ·  '):'';
+        lastNote=d.answer+srcs; showLine(lastNote); inboxPoll();
+        speak("Back with the findings, sir. "+d.answer);
+      });
+    }).catch(()=>{ status.textContent=''; });
+  }
+
+  // ---- intents ----
+  const CAP=/^\s*(remember(?: that)?|note(?: that| down)?|jot down|make a note(?: that)?|save that)\b/i;
+  const TADD=/^\s*(remind me(?: to)?|(?:add|set|create) (?:a )?reminder(?: to| that| for me to)?|add (?:a )?task|add to my (?:list|to-?do)|put on my list|to-?do:?)\b/i;
+  const TLIST=/^\s*(what(?:'?s| is) on my (?:list|to-?dos?|tasks?)|my (?:tasks?|to-?dos?|list)|what (?:do|should) i (?:do|need to do|work on))\b/i;
+  const PROACT=/\b(brief me (?:every|each) (?:morning|day)|(?:turn on|enable|start) (?:my )?(?:morning|daily|proactive) brief\w*|wake me (?:up )?(?:each|every) morning|morning briefings? on)\b/i;
+  const PROACTOFF=/\b((?:turn off|disable|stop) (?:my )?(?:morning|daily|proactive) brief\w*|no more morning briefings|morning briefings? off)\b/i;
+  const BRIEF=/^\s*(good morning|brief me(?! on)|my briefing|morning briefing|brief me on (?:my|the) day)\b/i;
+  const EDIT_LEAD=/^\s*(?:add|append|jot)\b/i;
+  const AGENT=/\b(my (?:calendar|schedule)|check my (?:calendar|schedule)|what(?:'?s| is) on my (?:calendar|schedule)|research .+ (?:on|with|in|using) (?:vidiq|semrush|the web|youtube|google)|search the web|look .+ up online|draft (?:an? )?(?:e-?mail|reply|post|message|tweet|dm)|reply to (?:my|the|that|this|him|her|them)|post (?:this|that|to)|publish (?:this|to)|repurpose|turn .+? into (?:.+ )?(?:posts?|content|threads?|social|clips?|videos?|tweets?|reels?|a linkedin)|repurpose .+ (?:into|for|across)|(?:create|make|write|schedule|generate) (?:me )?(?:some )?(?:social )?(?:posts|content|a thread|a tweet|a linkedin post|a reel|a video)|run (?:a |the )?(?:geo|seo) audit|on my (?:computer|mac|laptop)|open (?:the )?(?:app|chrome|browser|finder|safari|terminal)|fill (?:out|in) (?:the|my|this)|book .+ online)\b/i;
+  // live web research — checked BEFORE AGENT so "search the web for X" gets the fast path;
+  // vidiq/semrush research still needs the agent's MCP tools (guarded at the call site)
+  const RESEARCH=/^\s*(?:can you |could you |please |would you |go (?:ahead )?(?:and )?)*(?:do (?:some|a bit of|a little) )?(?:research|look up|google|find out|search)\b|\b(?:search|look(?: \S+){0,4} up) (?:on ?)?(?:the )?(?:web|internet|online)\b/i;
+  const NAV=/^\s*(show me|show|go to|take me to|fly to|navigate to|jump to|where(?:'?s| is)?)\b/i;
+  const CONFIRM=/^\s*(do it|send it|post it|go ahead|confirm|yes(?:,?\s*(?:do it|send it|please|go ahead))?|please do|make it so|proceed|approved?|go for it)\s*[.!]*\s*$/i;
+  const DENY=/^\s*(no|nope|don'?t|do not|cancel|stop|never\s?mind|stand down|forget it|leave it)\b/i;
+  // end the hands-free back-and-forth conversation and go back to waiting for "Jarvis"
+  const ENDCONV=/^\s*(that'?s all|that will be all|stop listening|go to sleep|dismiss(?:ed)?|stand down|we'?re done|i'?m done|thank you,? jarvis|thanks,? jarvis|goodbye|good night)\b/i;
+  // ask Jarvis to read the last note he pulled up out loud
+  const READ=/^\s*(?:yes,? )?(?:please )?(?:go ahead and |could you |can you )?(read(?: it| that| this| them| the note| aloud| out loud)?(?: out)?(?: loud)?(?: to me)?|out loud)\s*[.!,]*$/i;
+  // read-back preference: tool/calendar answers are SPOKEN by default; "you don't have to read it,
+  // I'll read it myself" flips answers to screen-only until he asks for voice again
+  const RDOFF=/\b(?:(?:you )?(?:don'?t|do not) (?:have to|need to) read|no need to read|stop reading (?:things?|answers?|it|everything) (?:back|out loud|aloud)|i(?:'|’)?ll read (?:it|that|them) myself)\b/i;
+  const RDON=/\b(?:read (?:it|things?|answers?|everything) (?:back|out loud|aloud) (?:again|from now on)|start reading (?:things?|answers?) (?:back|out loud|aloud)|go back to reading (?:things )?(?:out loud|aloud)|turn (?:the )?read ?-?backs? (?:back )?on)\b/i;
+  // ---- V4 commands ----
+  const MEMSELF=/^\s*(remember (?:that )?(?:about )?(?:me\b|i'?m\b|i am\b|i (?:prefer|like|love|hate|always|never|usually|generally|only|tend|use|work|live|run|own|drive|speak)\b)|note to self|from now on|for (?:future|the) (?:reference|record)|keep in mind (?:that )?i\b|remember about me)\b/i;
+  const PULSE=/^\s*(anything (?:new|important|urgent|i should know|i need to know)|any (?:updates?|news|alerts?)|what'?s new|pulse check|catch me up(?: on anything)?)\b/i;
+  const INBOX=/^\s*(check (?:my )?(?:inbox|e-?mail|mail)|what(?:'?s| is) in my (?:inbox|e-?mail|mail)|read (?:me )?my (?:inbox|e-?mail|mail)|triage (?:my )?(?:inbox|e-?mail)|any (?:important )?e-?mails?|do i have (?:any )?(?:important )?e-?mail)\b/i;
+  const SEE=/\b(?:see|look at|read|describe|check|scan|view|watch) (?:my |the |this |your )?screens?\b|\bwhat(?:'?s| is)? on (?:my |the |your )?screens?\b|\bwhat (?:do|can) you see\b|\bwhat (?:are|'?re) you (?:seeing|looking at)\b|\bwhat (?:you'?re|you are) seeing\b|\bwhat am i (?:looking at|seeing)\b|\bcan you see (?:my |the |this |your )?screens?\b|\blook(?:ing)? at (?:my |the |this )?screens?\b|\btell me what (?:you'?re |you are )?seeing\b/i;
+  const SEELOOSE=/\b(see|seeing|screens?|looking at|this)\b/i;   // once a screen is shared, any vision-ish phrase = a screen question
+  const CALL=/^\s*(call |phone |ring |dial |give .+ a call|book (?:me )?a (?:table|reservation|appointment)|make (?:a |the )?(?:phone )?call)\b/i;
+  // ---- agent inbox + smart-interrupt governor ----
+  const QUEUE=/^\s*(what needs me|anything pending|any cards|my (?:queue|cards|agent inbox)|what'?s pending|show (?:me )?(?:my )?(?:queue|cards)|read (?:me )?my (?:queue|cards)|catch me up on my (?:queue|cards))\b/i;
+  const DNDOFF=/^\s*(focus (?:mode )?off|exit focus|you can interrupt|resume alerts|stop focus|disturb me|dnd off|come back)\b/i;
+  const DND=/^\s*(focus mode|do not disturb|don'?t disturb me|stop interrupting|quiet mode|hold (?:my )?(?:calls|alerts|notifications)|dnd\b)\b/i;
+  // ---- mic sensitivity: strict = only ever respond to the wake word (no follow-up window)
+  const STRICTOFF=/^\s*(?:strict (?:mode )?off|relaxed mode|conversational mode|(?:you can )?listen for follow.?ups?(?: again)?|be less strict)\s*[.!?]*$/i;
+  const STRICTON=/^\s*(?:strict mode(?: on)?|require your name|only (?:respond|answer|listen) (?:to|when) (?:i say )?(?:your name|jarvis)|(?:be less|stop being(?: so)?) (?:sensitive|jumpy|trigger.?happy)|stop (?:answering|responding) (?:to|on) (?:noise|nothing|everything)|no more follow.?ups?)\s*[.!?]*$/i;
+  const POCKETQ=/^\s*(?:what(?:'?s| is) (?:the |my )?pocket code|pocket code|pair (?:my |the )?phone|connect (?:my |the )?phone|is my phone (?:paired|connected)|phone status)\s*[.!?]*$/i;
+  const OPENLINK=/^\s*(?:yes,? )?open (?:it|that|them|the link|(?:link |number )?(one|two|three|four|five|1|2|3|4|5))(?: in a new tab)?\s*[.!?]*$/i;
+  const LINKN={one:0,'1':0,two:1,'2':1,three:2,'3':2,four:3,'4':3,five:4,'5':4};
+  const VADOFF=/^\s*(?:disable|turn off|stop|no more)\s+(?:the\s+)?(?:instant\s+|voice\s+)?interrupt(?:ions?|ing)?\s*[.!?]*$|^\s*(?:finish|complete) your sentences\s*[.!?]*$/i;
+  const VADON=/^\s*(?:enable|turn on|allow|arm)\s+(?:the\s+)?(?:instant\s+|voice\s+)?interrupt(?:ions?|ing)?\s*[.!?]*$|^\s*let me (?:interrupt|cut) you(?: off)?\s*[.!?]*$/i;
+  // ---- time machine (episodic recall) ----
+  const RECALL=/^\s*(what (?:was|were) (?:i|we) (?:doing|working on|up to)|what did (?:i|we) (?:do|work on|discuss|get up to)|when did i (?:first )?(?:mention|say|start|talk about|work on|build)|remind me what (?:i|we) (?:did|worked on)|what happened (?:on|last|yesterday|this)|take me back to)\b/i;
+  // ---- voice hot-swap + live-engine picker ----
+  const VOICELIST=/^\s*(?:(?:what|which) voices (?:do you have|can you (?:do|use|wear))|list (?:your )?voices|show me your voices)\b/i;
+  const VOICERESET=/^\s*(?:go |switch |change )?back to your (?:usual|normal|default|own|real) voice\s*[.!?]*$/i;
+  const VENGINE=/^\s*(?:use|switch to) (?:the )?(realtime|real time|gpt|openai|eleven ?labs|auto)(?:\s+(?:voice\s+)?(?:engine|agent|mode|voice))?\s*[.!?]*$/i;
+  const VOICESWAP=/^\s*(?:switch|change) (?:your )?voice to (?:the )?([a-z0-9 .-]+?)(?:\s+voice)?\s*[.!?]*$|^\s*(?:speak|talk) (?:in|with|like) (?:the |a )?([a-z0-9 .-]+?)(?:\s+voice)?\s*[.!?]*$/i;
+  // ---- model hot-swap ("try on haiku" / "swap your brain to grok") ----
+  const BRAINLIST=/^\s*(?:(?:what|which) (?:brains|models|engines) (?:do you have|can you (?:run|wear|use))|list (?:your )?(?:brains|models)|show me your brains)\b/i;
+  const BRAINRESET=/^\s*(?:go |switch |swap |change )?back to (?:your )?(?:usual|normal|default|old|regular)(?: (?:brain|model|self|engine))?\s*[.!?]*$/i;
+  const BRAIN=/^\s*(?:(?:hey |okay |ok )?jarvis[,!]? )?(?:can you |could you |please |would you |go ahead and )*(?:try on|put on|switch (?:your |the )?(?:brain |model |engine )(?:over )?to|swap (?:your |the )?(?:brain |model |engine )(?:to|for)|change (?:your |the )?(?:brain|model|engine) to)\s+(?:the |your |a |an )?([a-z0-9 ._-]+?)(?:\s+(?:brain|model|engine))?(?:[,;]?\s*(?:and\s+)?(?:using|use|with|via|through|over|on)\s+(?:the\s+|your\s+)?open\s*-?router(?:'s)?(?:\s+api)?(?:\s+key)?(?:\s+(?:to|and)\b[a-z0-9 ./'-]*)?)?(?:\s+(?:for me|now|please))?\s*[.!?]*$/i;
+  // ---- personality engine: TARS dials, skins, candid mode ----
+  const DIAL=/^\s*(?:set )?(humor|honesty)(?: (?:setting|level|dial))?(?: to| at)? (\d{1,3})\s*(?:percent|%)?\s*[.!?]*$/i;
+  const SKINSW=/^\s*(?:(?:switch|go|change) (?:to )?)?(glados|pirate|coach|butler) mode\s*[.!?]*$|^\s*be (?:the )?(glados|pirate|coach|butler)\s*[.!?]*$/i;
+  const CANDID=/^\s*(?:give me )?(?:your )?(?:unfiltered|brutally honest|no.?filter|candid) (?:assessment|opinion|take|review|thoughts?)\b/i;
+  // ---- the AI-OS layer: deterministic Mac control by voice ----
+  function parseOs(q){
+    const t=q.toLowerCase().replace(/[.!?]+$/,'').trim();
+    let m;
+    if((m=t.match(/^(?:set |turn )?(?:the )?volume (?:to |at )?(\d{1,3})(?: percent| %)?$/)))return{action:'volume',value:m[1]};
+    if(/^(?:turn |volume )?(?:the )?(?:sound |volume )?(?:up)$|^volume up$|^louder$/.test(t))return{action:'volume',value:'up'};
+    if(/^(?:turn |volume )?(?:the )?(?:sound |volume )?(?:down)$|^volume down$|^quieter$/.test(t))return{action:'volume',value:'down'};
+    if(/^mute(?: the (?:sound|audio|mac))?$/.test(t))return{action:'volume',value:'mute'};
+    if(/^unmute/.test(t))return{action:'volume',value:'unmute'};
+    if((m=t.match(/^(?:switch to |turn on |enable |go )?dark mode(?: on)?$/)))return{action:'dark',value:'on'};
+    if(/^(?:switch to |turn off |disable )?(?:dark mode off|light mode(?: on)?)$/.test(t))return{action:'dark',value:'off'};
+    if(/^toggle (?:dark|the) mode$/.test(t))return{action:'dark',value:'toggle'};
+    if((m=t.match(/^turn (wifi|wi-fi) (on|off)$/)))return{action:'wifi',value:m[2]};
+    if((m=t.match(/^turn bluetooth (on|off)$/)))return{action:'bluetooth',value:m[1]};
+    if(/^connect (?:my |the )?airpods$/.test(t))return{action:'airpods',value:'connect'};
+    if(/^(?:go to )?sleep$|^put the (?:mac|computer) to sleep$/.test(t))return{action:'sleep',value:'system'};
+    if(/^(?:turn off|kill) the (?:screen|display)$|^screen off$/.test(t))return{action:'sleep',value:'display'};
+    if(/^(?:dim|darken) the screen$|^brightness down$/.test(t))return{action:'brightness',value:'down'};
+    if(/^brighten (?:the screen|up)$|^brightness up$/.test(t))return{action:'brightness',value:'up'};
+    if((m=t.match(/^(?:set )?brightness (?:to )?(\d{1,3})/)))return{action:'brightness',value:m[1]};
+    if((m=t.match(/^(?:turn )?night ?shift (on|off)$/)))return{action:'nightshift',value:m[1]};
+    if((m=t.match(/^(evening|cinema|focus|bright|morning) mode$/)))return{action:'scene',value:m[1]};
+    if((m=t.match(/^(?:open|launch|start) (.+)$/))&&!/\b(the )?(pod bay|note|node|inbox|project|folder|wiki|page)\b/.test(m[1]))return{action:'launch',value:m[1]};   // creations go to the brain, not the Dock
+    if((m=t.match(/^(?:quit|close) (.+)$/))&&!/\b(everything|all|the (?:card|note|inbox))\b/.test(m[1]))return{action:'quit',value:m[1]};
+    if((m=t.match(/^clean slate(?: except (.+))?$|^(?:quit|close) everything(?: except (.+))?$/)))return{action:'clean_slate',value:(m[1]||m[2]||'')};
+    if((m=t.match(/^(?:put |move |snap )?(.+?) (?:on the |to the )?(left|right|top|bottom|center|top.left|top.right|bottom.left|bottom.right)(?: half| side)?$/))&&/chrome|safari|notes|finder|terminal|code|slack|figma|obsidian|arc|spotify|mail|messages|preview/i.test(m[1]))return{action:'window',value:m[1]+' '+m[2].replace(/\s/g,'-')};
+    if((m=t.match(/^(?:split screen[:,]? |arrange )(.+)$/)))return{action:'arrange',value:m[1].replace(/ and /g,'; ').replace(/ on the /g,':').replace(/ to the /g,':')};
+    return null;
+  }
+  const FINDFILE=/^\s*(?:find|locate|pull up|open) (?:me )?(?:the |my |a )?(.{3,}?(?:pdf|file|doc|docx|invoice|receipt|screenshot|download|presentation|spreadsheet|image|photo|contract|report).{0,40})\s*[.!?]*$/i;
+  const ORGANIZE=/^\s*(?:clean(?: up)?|organi[sz]e|tidy(?: up)?) (?:my |the )?(downloads|desktop|documents)(?: folder)?\s*[.!?]*$/i;
+  const RENSHOTS=/^\s*rename (?:my |the )?screenshots?(?: by content)?\s*[.!?]*$/i;
+  const TYPEIT=/^\s*type (?:it|that|this)(?: (?:here|in|into (?:this|the) (?:field|box|app)))?\s*[.!?]*$|^\s*type[:,] (.+)$/i;
+  const CLIPQ=/^\s*(?:what(?:'s| is| did i) (?:on |in )?(?:my )?clip(?:board)?(?: copy)?|clipboard history|what did i copy(?: earlier| last)?)\s*[.!?]*$/i;
+  const CLIPTX=/^\s*(?:make|turn) (?:my |the )?clipboard (?:into |a |an )?(.+)$|^\s*copy (?:that|it|your (?:answer|reply))\s*[.!?]*$/i;
+  // ---- guide mode ("show me how / where do I click" → vision + a desktop highlight ring) ----
+  const GUIDE=/\b(show me (?:how|where)|where (?:do|should) i (?:click|tap|go|look)|point (?:at|to|it out)|guide me|walk me through|highlight (?:it|that|the|where)|(?:draw|put) (?:a )?(?:circle|ring) around)\b/i;
+  // ---- desktop ring test ("draw a circle on my screen") + linked node creation ----
+  const DRAW=/^\s*(?:draw|put|show)\s+(?:a |the )?(?:circle|ring|target|marker)(?:\s+(?:on|at|in)\s+(?:my |the )?(?:screen|display|desktop|middle|center))?\s*[.!?]*$/i;
+  const ADDNODE=/^\s*(?:can you |could you |please |would you |go ahead and )*(?:add|create|drop|make)\s+(?:a |another |new )?(?:new )?(?:node|sphere|bubble|note)\b\s*(?:about|for|called|on)?\s*(.+?)(?:\s+(?:and\s+)?(?:(?:connect(?:ed|ing)?|link(?:ed|ing)?|wire(?:d)?)\s+(?:it\s+|this\s+)?to|under|next to|near)\s+(?:my\s+|the\s+)?(.+?))?\s*(?:for me|please)?\s*[.!?]*$/i;
+  // casual conversation gets NO "one moment, sir" filler — acks are for actual tasks
+  const CASUAL=/\b(how (?:are|is|was|'s)|how's it|what do you think|your (?:opinion|take|thoughts?)|do you (?:think|like|reckon|agree)|hello|hey there|hiya|good (?:morning|evening|afternoon|night)|thank(?:s| you)|joke|funny|how about you|what's up|wish me|i (?:think|feel|reckon)|honestly)\b/i;
+  // …and the gate is OPT-IN: only messages that LOOK like an information request earn a spoken
+  // ack. Banter, jabs, greetings ("look alive, Jarvis") get a straight answer — "one moment,
+  // sir" in reply to a joke rather spoils it. Misses are invisible (answers land in ~2s anyway).
+  const TASKY=/\b(what(?:'s| is| are| was| were| about| happened)|who(?:'s| is| are| was)|when (?:is|was|did|does|do|will)|where (?:is|are|was|did|do)|why (?:is|was|did|does|do)|how (?:much|many|does|did|long|old|far|big|often)|do (?:i|we) have|did (?:i|we)|tell me (?:about|what|how|the)|give me (?:the|a|an)|summari[sz]e|explain\b|compare\b|list (?:my|the|all)|walk me through)\b/i;
+
+  // robust "add … to my <note> : <text>" parser — colon OR ' - ' separator, or punctuation-free
+  // "<note> note <text>" form (speech-to-text has no punctuation); never treats 'note' as the target.
+  function parseEdit(q){
+    if(!EDIT_LEAD.test(q)) return null;
+    const m=q.match(/\bto (?:my )?(.+)$/i); if(!m) return null;
+    let rest=m[1].trim(), target=null, text=null, sep=rest.match(/^(.*?)\s*:\s*(.+)$/)||rest.match(/^(.*?)\s+-\s+(.+)$/);
+    if(sep){ target=sep[1].trim(); text=sep[2].trim(); }
+    else { const nm=rest.match(/^(.*?)\bnote\b\s+(.+)$/i); if(nm){ target=nm[1].trim(); text=nm[2].trim(); } }
+    if(target==null) return null;
+    target=target.replace(/\s*\bnote\b\s*$/i,'').trim();
+    if(!target || target.toLowerCase()==='note' || !text) return null;
+    return {target, text};
+  }
+
+  async function answer(q){
+    status.textContent='● thinking…'; ans.style.display='none';
+    // spoken ack ONLY for task-shaped questions, and only if the answer is actually slow
+    // (2.2s — normal replies land in ~2s and never trigger it). Banter never gets one.
+    const tasky=TASKY.test(q)&&!CASUAL.test(q);
+    const ack=tasky?delayedAck('think', 2200):{settle:async()=>{}};
+    const body={question:q, session:SID};
+    if(screenLive()){ const f=await grabFrame(); if(f) body.image=f; }   // share live → EVERY turn carries fresh eyes (screen-aware follow-ups, no re-announcing)
+    const d=await post('/chat', body, 160000);   // [TOOLS:]/[CALL:] tags run real tool chains inside /chat — same budget as /tool_chat (35s aborted them mid-run, audit 2026-07-27)
+    await ack.settle();
+    if(d.error){ status.textContent=d.error; return; }
+    status.textContent='';
+    if(d.reflex && window.__reflexResult) try{ window.__reflexResult(d.reflex, d.answer); }catch(_){}   // S25: the vault verdict + the judge, from the server
+    if(d.model) setBrainBadge(d.model, d.default);  // the server may have executed a brain swap
+    if(d.new_node){                                 // the server captured a note/project — birth it in the graph
+      const tn=d.new_node.related?bestNode(d.new_node.related):null;
+      if(window.__os&&window.__os.addNote) window.__os.addNote(d.new_node.label, d.new_node.text, tn?tn.id:null, d.new_node.group);
+      if(d.new_node.kind) inboxPoll();              // CREATE also raised a 📁 card
+    }
+    if(d.reminder_set){ inboxPoll(); refreshTasks(); }  // slide the ⏰ card in right away
+    if(d.teardown && window.__teardownAdopt) try{ window.__teardownAdopt(d.teardown); }catch(_){}   // S28: the brain flagged [TEARDOWN:] — the organ polls + shows the panel; the ack is spoken below
+    if(d.mission && window.__missionAdopt) try{ window.__missionAdopt(d.mission); }catch(_){}        // S29: the brain started a REA / BUILD mission — the dock adopts it
+    if(d.nodes && d.nodes.length){                 // a note was pulled up — show it on screen, don't read it aloud
+      flyTo(d.nodes); showLine(d.answer); lastNote=d.answer;
+      await speak("I've pulled up all the information, sir. You can read it yourself — or if you'd like, say “read it out loud” and I shall.");
+    } else if(d.sources && d.sources.length){       // the brain flagged [SEARCH:] and researched — same treatment as /research
+      const srcs='\n\nSources: '+d.sources.map(s=>s.title||s.url).join('  ·  ');
+      lastNote=d.answer+srcs; showLine(lastNote); inboxPoll();
+      await speak(d.answer);
+    } else if(d.call_confirm && window.__jarvisCallAdopt){  // the brain flagged [CALL:] — hand to the calls bay, which speaks the confirm
+      showLine(d.answer); lastNote=d.answer;
+      await window.__jarvisCallAdopt(d.call_confirm);
+    } else {                                        // conversational reply — just say it
+      lastNote=''; showLine(d.answer); await speak(d.answer);
+    }
+  }
+  function bestNode(topic){
+    if(!window.__os||!topic) return null;
+    const t=topic.toLowerCase().replace(/\b(everything|about|my|the|all|on|stuff|notes?|node)\b/g,'').replace(/\s+/g,' ').trim();
+    const words=t.split(' ').filter(w=>w.length>1);
+    let best=null,bs=0;
+    window.__os.data.nodes.forEach(n=>{ const lab=String(n.label||'').toLowerCase(); let s=0;
+      words.forEach(w=>{ if(lab.indexOf(w)>=0) s+=2; }); if(lab===t) s+=6; if(s>bs){ bs=s; best=n; } });
+    return bs>0?best:null;
+  }
+  async function navigate(topic){
+    const n=bestNode(topic);
+    if(!n){ const l="I'm afraid I can't place that one, sir."; showLine(l); return speak(l); }
+    window.__os.onNodeClick(n);
+    const l=`Right this way, sir — ${n.label}.`; showLine(l); await speak(l);
+  }
+  async function capture(text){
+    if(!text) return; status.textContent='● noting…';
+    let label=text.split(/\s+/).slice(0,7).join(' ');
+    try{ const s=await post('/remember',{text}); if(s&&s.error){ status.textContent=''; const l="I couldn't write that one down, sir."; showLine(l); return speak(l); } if(s&&s.label) label=s.label; }catch(e){}
+    if(window.__os&&window.__os.addNote) window.__os.addNote(label, text);
+    status.textContent=''; const l=`Noted, sir. "${label}" has joined the constellation.`; showLine(l); await speak(l);
+  }
+  // "add a node about X connected to Y" — a new sphere is born LIVE, linked where you said
+  async function addNode(topic, target){
+    if(!topic) return; status.textContent='● growing the brain…';
+    const tn=target?bestNode(target):null;
+    let label=topic.split(/\s+/).slice(0,7).join(' ');
+    try{ const s=await post('/remember',{text:topic, related:(tn?tn.label:'')});
+      if(s&&s.error){ status.textContent=''; const l="I couldn't write that one down, sir."; showLine(l); return speak(l); }
+      if(s&&s.label) label=s.label; }catch(e){}
+    if(window.__os&&window.__os.addNote) window.__os.addNote(label, topic, tn?tn.id:null);
+    status.textContent='';
+    const l=tn?`Done, sir — "${label}" is live and wired to ${tn.label}.`
+              :(target?`I couldn't place "${target}", sir — so "${label}" joined near your focus instead.`
+                      :`Done, sir — "${label}" has joined the constellation.`);
+    showLine(l); await speak(l);
+  }
+  // "draw a circle on my screen" — the desktop overlay ring, no vision call needed
+  async function doDraw(){
+    const d=await post('/overlay',{x_pct:50, y_pct:42, label:'JARVIS'}, 15000);
+    const l=d.error||"There, sir — dead center. If you don't see the ring, start me from your own Terminal (the sandbox can't reach your screen).";
+    showLine(l); await speak(d.error?l:"There, sir.");
+  }
+  // "…tomorrow / tonight / in 2 hours / at 5pm / next week / on friday" → a real due time
+  function parseWhen(text){
+    const t=text.toLowerCase(); const now=new Date(); let d=null, label='';
+    const at=t.match(/\bat (\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
+    const hourFrom=m=>{ let h=+m[1]; const min=+(m[2]||0);
+      if(m[3]==='pm'&&h<12)h+=12; if(m[3]==='am'&&h===12)h=0; if(!m[3]&&h<8)h+=12; return [h,min]; };
+    if(/\btomorrow\b/.test(t)){ d=new Date(now); d.setDate(d.getDate()+1);
+      const [h,min]=at?hourFrom(at):[/\bmorning\b/.test(t)?9:/\bafternoon\b/.test(t)?14:/\b(evening|night)\b/.test(t)?19:9,0];
+      d.setHours(h,min,0,0); label='tomorrow'; }
+    else if(/\btonight\b/.test(t)){ d=new Date(now); d.setHours(20,0,0,0); label='tonight'; }
+    else if(/\bnext week\b/.test(t)){ d=new Date(now); d.setDate(d.getDate()+7); d.setHours(9,0,0,0); label='next week'; }
+    else { const inm=t.match(/\bin (\d+)\s*(minutes?|mins?|hours?|hrs?|days?)\b/);
+      if(inm){ const n=+inm[1], u=inm[2][0]; d=new Date(now.getTime()+n*(u==='m'?6e4:u==='h'?36e5:864e5)); label=`in ${inm[1]} ${inm[2]}`; }
+      else { const day=t.match(/\bon (monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
+        if(day){ const names=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+          let diff=(names.indexOf(day[1])-now.getDay()+7)%7||7; d=new Date(now); d.setDate(d.getDate()+diff);
+          const [h,min]=at?hourFrom(at):[9,0]; d.setHours(h,min,0,0); label=day[1][0].toUpperCase()+day[1].slice(1); }
+        else if(at){ d=new Date(now); const [h,min]=hourFrom(at); d.setHours(h,min,0,0);
+          if(d<=now) d.setDate(d.getDate()+1); label='at '+at[1]+(at[2]?':'+at[2]:'')+(at[3]||''); } } }
+    if(d&&at&&label!=='at '+at[1]+(at[2]?':'+at[2]:'')+(at[3]||'')) label+=' at '+at[1]+(at[2]?':'+at[2]:'')+(at[3]||'');
+    return d?{due:d.getTime(), label}:{due:null, label:''};
+  }
+  async function addTask(text){
+    if(!text) return; status.textContent='● noting…';
+    const w=parseWhen(text);
+    const d=await post('/task',{text, due:w.due?Math.floor(w.due/1000):null}); renderTasks(d.tasks); status.textContent='';
+    if(w.due){       // a timed reminder → drop a card top-right + confirm aloud
+      post('/inbox_add',{type:'notify', title:'⏰ Reminder set — '+w.label, body:text, source:'reminder'})
+        .then(r=>renderInbox(r.cards)).catch(()=>{});
+      const l=`Reminder set for ${w.label}, sir.`; showLine(l); await speak(l);
+    } else {
+      const l=`Added to your list, sir: "${text}".`; showLine(l); await speak(l);
+    }
+  }
+  async function listTasks(){
+    const d=await post('/tasks',{}); renderTasks(d.tasks); const n=(d.tasks||[]).length;
+    const l=n?`${n} item${n>1?'s':''} on your list, sir — over on the right.`:`Your list is gloriously empty, sir.`;
+    showLine(l); await speak(l);
+  }
+  async function brief(){
+    status.textContent='● gathering your day…';
+    const ack=progressAck(250, 'fetch');                // briefings are never instant — heartbeat until it lands
+    const d=await post('/briefing',{}, 240000); await ack.settle(); status.textContent='';
+    if(d.error){ showLine(d.error); return speak("I can't brief you just now, sir."); }
+    lastNote=d.answer; showLine(d.answer); await speak(d.answer);
+  }
+  async function edit(target,text){
+    status.textContent='● updating…'; const d=await post('/edit',{target,text}); status.textContent='';
+    if(d.error){ const l="I couldn't find that note, sir."; showLine(l); return speak(l); }
+    if(d.idx!=null) flyTo([d.idx]);
+    const l=`Added to ${d.label}, sir.`; showLine(l); await speak(l);
+  }
+  async function runAgent(task){
+    status.textContent='● on it…';
+    const ack=progressAck(250, 'agent');
+    const d=await post('/agent',{task, session:SID}, 240000); await ack.settle(); status.textContent='';
+    if(d.error){ showLine(d.error); return speak("That didn't go to plan, sir."); }
+    if(d.needs_confirm && d.pending_id){
+      pending={id:d.pending_id};
+      showLine(d.answer+'\n\n⏳ Say "do it" to confirm, sir — or "cancel".');
+      await speak(d.answer.length>240?"I've prepared it, sir. Shall I proceed?":(d.answer+" Shall I proceed, sir?"));
+      return;
+    }
+    showLine(d.answer); await speak(d.answer.length>240?"Done, sir — the details are on screen.":d.answer);
+  }
+  async function confirmAgent(){
+    const p=pending; pending=null; if(!p) return;
+    status.textContent='● executing…'; const d=await post('/agent_confirm',{pending_id:p.id}, 240000); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    showLine(d.answer); await speak(d.answer.length>240?"Done, sir.":d.answer);
+  }
+
+  // ---- V4 handlers ----
+  async function memorize(text){
+    if(!text) return; status.textContent='● remembering…';
+    await post('/remember_me',{text}); status.textContent='';
+    const l="I'll remember that, sir."; showLine(l); await speak(l);
+  }
+  async function doPulse(){
+    status.textContent='● scanning…';
+    const ack=progressAck(300, 'look');
+    const d=await post('/pulse',{}, 240000); await ack.settle(); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    lastNote=d.answer; showLine(d.answer); await speak(d.answer);
+  }
+  async function doInbox(){
+    status.textContent='● reading your inbox…';
+    const ack=progressAck(300, 'look');
+    const d=await post('/inbox',{}, 240000); await ack.settle(); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    lastNote=d.answer; showLine(d.answer); await speak(d.answer);
+  }
+  // screen vision: getDisplayMedia needs a user GESTURE → sharing starts from the 🖥 button click.
+  // We keep ONE playing <video> bound to the stream so frame grabs are reliable across repeated
+  // "look at my screen" calls (ImageCapture.grabFrame is flaky / one-shot, so we don't use it).
+  let screenStream=null, screenVid=null;
+  function setScreenBtn(on){ if(!screenBtn) return;
+    screenBtn.style.background=on?'#1d4a5e':'#212b30'; screenBtn.style.color=on?'#7af0ff':'#5a6b62'; screenBtn.dataset.on=on?'1':''; }
+  // S19r: the WATCH share (eyes.js) is a SECOND display stream the question pipeline never
+  // saw — "what do you think of this?" under WATCH grabbed nothing and died silently. The
+  // pipeline now treats an open WATCH like THE share: screenLive() counts it and both
+  // frame-grabbers fall back to its video element.
+  function watchVid(){ try{ const W=window.__eyesG && window.__eyesG.WATCH;
+    return (W && W.on && W.video && W.video.videoWidth) ? W.video : null; }catch(_){ return null; } }
+  function screenLive(){ return !!(screenStream && screenStream.active && screenVid) || !!watchVid(); }
+  async function startScreen(){
+    try{
+      screenStream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:8}, audio:false});
+      screenVid=document.createElement('video'); screenVid.muted=true; screenVid.playsInline=true;
+      screenVid.srcObject=screenStream; await screenVid.play().catch(()=>{});
+      screenStream.getVideoTracks()[0].addEventListener('ended', stopScreen);
+      setScreenBtn(true);
+      try{ post('/presence',{cmd:'show'}); post('/presence',{cmd:'state:idle'}); }catch(_){}   // Jarvis's orb rides the share
+      try{ window.__jarvisShare=true; }catch(_){}
+      for(let i=0;i<25 && !screenVid.videoWidth;i++) await new Promise(r=>setTimeout(r,80));   // wait for the first frame
+      return true;
+    }catch(e){ stopScreen(); return false; }
+  }
+  function stopScreen(){
+    if(screenStream){ screenStream.getTracks().forEach(t=>{try{t.stop();}catch(e){}}); }
+    if(screenVid){ try{screenVid.pause();}catch(e){} screenVid.srcObject=null; }
+    screenStream=null; screenVid=null; setScreenBtn(false);
+    if(shareAutoWake){ shareAutoWake=false; if(wakeOn) wake.click(); }     // ears were share-borrowed — give them back
+    else if(wakeOn && awaitingCmd){ clearTimeout(wakeTimer);               // the share's open window closes normally now
+      wakeTimer=setTimeout(()=>{ awaitingCmd=false; renderOrb(); if(wakeOn) status.textContent=IDLE; }, FOLLOWUP_MS); }
+    try{ window.__jarvisShare=false; post('/presence',{cmd:'hide'}); }catch(_){}  // the share's claim ends — the SERVER keeps the orb up if a drive is mid-flight (2026-08-11)
+
+    if(liveKind==='openai' && liveDC){                 // tell the live model the link is gone so it won't pretend
+      try{ liveDC.send(JSON.stringify({type:'conversation.item.create',
+        item:{type:'message',role:'user',content:[{type:'input_text',
+          text:'(system note: the screen link is now CLOSED — look_at_screen will report closed until it is reopened)'}]}})); }catch(_){}
+    }
+  }
+  // closing the TAB (or browser) skips stopScreen entirely — nobody would post 'hide' and the
+  // desktop orb would outlive its owner (2026-08-18 strand). A beacon survives page teardown;
+  // the server's 75s share-liveness watchdog is the net behind it for hard crashes.
+  window.addEventListener('pagehide', ()=>{ try{ if(window.__jarvisShare)
+    navigator.sendBeacon('/presence', new Blob([JSON.stringify({cmd:'hide'})],{type:'application/json'})); }catch(_){} });
+  async function grabFrame(){
+    const vid=(screenStream && screenStream.active && screenVid) ? screenVid : watchVid();
+    if(!vid) return null;
+    for(let i=0;i<15 && (!vid.videoWidth || vid.readyState<2);i++) await new Promise(r=>setTimeout(r,80));
+    const sw=vid.videoWidth, sh=vid.videoHeight; if(!sw||!sh) return null;
+    try{
+      const w=Math.min(1366,sw), h=Math.round(sh*(w/sw));
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(vid,0,0,w,h);
+      const data=cv.toDataURL('image/jpeg',0.72);
+      return data.length>3000 ? data.split(',')[1] : null;     // reject a blank/black frame
+    }catch(e){ return null; }
+  }
+  // Full data-URL frame for the LIVE call — stepped down until under the WebRTC data-channel ~256KB cap.
+  async function grabFrameForLive(){
+    const vid=(screenStream && screenStream.active && screenVid) ? screenVid : watchVid();
+    if(!vid) return null;
+    for(let i=0;i<15 && (!vid.videoWidth || vid.readyState<2);i++) await new Promise(r=>setTimeout(r,80));
+    const sw=vid.videoWidth, sh=vid.videoHeight; if(!sw||!sh) return null;
+    for(const step of [[1024,0.7],[800,0.55],[640,0.45]]){
+      try{
+        const w=Math.min(step[0],sw), h=Math.round(sh*(w/sw));
+        const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        cv.getContext('2d').drawImage(vid,0,0,w,h);
+        const url=cv.toDataURL('image/jpeg',step[1]);
+        if(url.length<230000) return url;
+      }catch(e){ return null; }
+    }
+    return null;
+  }
+  if(screenBtn) screenBtn.addEventListener('click', ()=>{
+    audioCtx();
+    if(screenStream){ stopScreen(); const l="Screen sharing off, sir."; showLine(l); speak(l); return; }
+    startScreen().then(ok=>{
+      let l = ok ? "I can see your screen now, sir — ask me to look anytime."
+                 : "Screen-share was declined, sir.";
+      if(ok && SR && !liveKind){
+        // S19s (his law): NO feature auto-enables the 👂 — he runs the ear himself
+        if(wakeOn){ l = "I can see your screen and I'm listening, sir — just talk, and feel free to cut me off.";
+          armFollowup(); }                                                 // open conversation for the whole share
+      }
+      showLine(l); speak(l);
+    });
+  });
+
+  // ---- LIVE duplex conversation — two engines, one 📡 button ----
+  // elevenlabs: EL Agents w/ custom-LLM (the 4722 brain — pure Claude).  openai: GPT Realtime
+  // over WebRTC; GPT is ears+mouth, and an ask_jarvis TOOL routes knowledge back to this server
+  // so Claude + the vault stay the brain either way. Pick with "use the realtime/elevenlabs engine".
+  let liveConv=null, livePC=null, liveMic=null, liveKind='', liveNodesIv=null, liveLastTs=0, liveDC=null;
+  function liveOn(kind){
+    liveKind=kind;
+    liveBtn.dataset.on='1'; liveBtn.style.background='#2b5847'; liveBtn.style.color='#34d399';
+    status.textContent='● LIVE ('+(kind==='openai'?'GPT Realtime':'ElevenLabs')+') — talk naturally, interrupt anytime';
+    liveLastTs=Math.floor(Date.now()/1000);
+    liveNodesIv=setInterval(async()=>{                  // node side-channel → the graph still flies
+      try{ const d=await fetch('/api/duplex_nodes').then(r=>r.json());
+        if(d.ts>liveLastTs){ liveLastTs=d.ts; if(d.nodes&&d.nodes.length) flyTo(d.nodes); } }catch(e){}
+      try{ const m=await fetch('/api/model').then(r=>r.json());   // brain can be swapped mid-call
+        setBrainBadge(m.model, m.default); }catch(e){}
+    },1500);
+  }
+  async function startLive(){
+    const st=await fetch('/api/duplex').then(r=>r.json()).catch(()=>({}));
+    if(!st.configured){
+      const l="No live engine is wired yet, sir — add an OpenAI key to config for GPT Realtime, or an ElevenLabs Agents key plus setup_duplex.py.";
+      showLine(l); return speak(l);
+    }
+    if(wakeOn) wakePause(true);                         // one listener at a time — the session owns the mic
+    cutVoice();                                         // kills the CURRENT chunk AND the queued rest of a long read
+    if(st.provider==='openai') return startRealtime();
+    return startEleven();
+  }
+  async function startEleven(){
+    const s=await fetch('/api/duplex_signed').then(r=>r.json()).catch(()=>({}));
+    if(!s.signed_url){ const l=s.error||"I couldn't open the line, sir."; showLine(l); return speak(l); }
+    status.textContent='● opening the line…';
+    try{
+      const mod=await import('https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.25.0/+esm');
+      liveConv=await mod.Conversation.startSession({
+        signedUrl:s.signed_url,
+        onModeChange:m=>{ const sp=(m&&m.mode)==='speaking'; orbSpeak=sp; renderOrb(); jhue(sp?'speak_start':'speak_end'); },
+        onDisconnect:()=>stopLive(true),
+        onError:e=>{ showLine('live: '+((e&&e.message)||e)); }
+      });
+      liveOn('elevenlabs');
+    }catch(e){ status.textContent='';
+      const l="The live-voice SDK wouldn't load, sir — check the connection."; showLine(l); speak(l); }
+  }
+  async function startRealtime(){
+    const s=await fetch('/api/realtime_session').then(r=>r.json()).catch(()=>({}));
+    if(!s.client_secret){ const l=s.error||"OpenAI wouldn't open the line, sir."; showLine(l); return speak(l); }
+    status.textContent='● opening the Realtime line…';
+    try{
+      livePC=new RTCPeerConnection();
+      liveMic=await navigator.mediaDevices.getUserMedia({audio:true});
+      liveMic.getTracks().forEach(t=>livePC.addTrack(t, liveMic));
+      const spk=new Audio(); spk.autoplay=true;
+      livePC.ontrack=e=>{ spk.srcObject=e.streams[0]; };
+      const dc=livePC.createDataChannel('oai-events'); liveDC=dc;
+      dc.onmessage=ev=>{ try{ handleRT(JSON.parse(ev.data), dc); }catch(e){} };
+      const offer=await livePC.createOffer(); await livePC.setLocalDescription(offer);
+      const resp=await fetch(s.sdp_url||('https://api.openai.com/v1/realtime?model='+encodeURIComponent(s.model)),{
+        method:'POST', body:offer.sdp,
+        headers:{Authorization:'Bearer '+s.client_secret,'Content-Type':'application/sdp'}});
+      if(!resp.ok) throw new Error('SDP '+resp.status);
+      await livePC.setRemoteDescription({type:'answer', sdp:await resp.text()});
+      liveOn('openai');
+    }catch(e){ status.textContent=''; await stopLive(true);
+      const l='The Realtime line failed, sir — '+(e&&e.message||e)+'.'; showLine(l); speak(l); }
+  }
+  async function handleRT(ev, dc){
+    const t=ev.type||'';
+    if(t==='output_audio_buffer.started'){ orbSpeak=true; renderOrb(); jhue('speak_start'); }
+    else if(t==='output_audio_buffer.stopped'||t==='output_audio_buffer.cleared'){ orbSpeak=false; renderOrb(); jhue('speak_end'); }
+    else if(t==='response.function_call_arguments.done' && (ev.name==='ask_jarvis')){
+      let q=''; try{ q=(JSON.parse(ev.arguments||'{}').question)||''; }catch(e){}
+      let out='I could not reach the brain.';
+      try{
+        const d=await post('/chat',{question:q, session:'realtime'}, 160000);
+        out=d.answer||d.error||out;
+        if(d.nodes&&d.nodes.length) flyTo(d.nodes);
+        if(d.model) setBrainBadge(d.model, d.default);            // swaps work mid-call
+        if(d.new_node){ const tn=d.new_node.related?bestNode(d.new_node.related):null;
+          if(window.__os&&window.__os.addNote) window.__os.addNote(d.new_node.label, d.new_node.text, tn?tn.id:null, d.new_node.group); }
+        if(d.reminder_set){ inboxPoll(); refreshTasks(); }        // ⏰ card slides in mid-call too
+      }catch(e){}
+      dc.send(JSON.stringify({type:'conversation.item.create',
+        item:{type:'function_call_output', call_id:ev.call_id, output:out}}));
+      dc.send(JSON.stringify({type:'response.create'}));
+    }
+    else if(t==='response.function_call_arguments.done' && ev.name==='look_at_screen'){
+      let out; const img=await grabFrameForLive();
+      if(!img){
+        showLine('🖥 Tap the screen button to share, sir — then ask again.');
+        out='The screen link is CLOSED — no screenshot is available. Tell the user to tap the '
+          +'screen-share button (the monitor icon 🖥) to share their screen, then ask again. Do '
+          +'NOT describe or guess at their screen.';
+      } else {
+        showLine('🖥 fresh frame sent into the call');
+        dc.send(JSON.stringify({type:'conversation.item.create',
+          item:{type:'message', role:'user', content:[{type:'input_image', image_url:img}]}}));
+        out='A fresh screenshot of the user\'s screen RIGHT NOW is attached as the image above. '
+          +'Answer only from what you actually see in it — name the app, window title, or visible '
+          +'content specifically. It may have changed since any earlier screenshot.';
+      }
+      dc.send(JSON.stringify({type:'conversation.item.create',
+        item:{type:'function_call_output', call_id:ev.call_id, output:out}}));
+      dc.send(JSON.stringify({type:'response.create'}));
+    }
+    else if(t==='error'){ showLine('realtime: '+((ev.error&&ev.error.message)||'')); }
+  }
+  async function stopLive(silent){
+    if(liveNodesIv){ clearInterval(liveNodesIv); liveNodesIv=null; }
+    if(liveConv){ const c=liveConv; liveConv=null; try{ await c.endSession(); }catch(e){} }
+    if(liveMic){ try{ liveMic.getTracks().forEach(t=>t.stop()); }catch(e){} liveMic=null; }
+    if(livePC){ try{ livePC.close(); }catch(e){} livePC=null; }
+    liveDC=null; liveKind='';
+    liveBtn.dataset.on=''; liveBtn.style.background='#212b30'; liveBtn.style.color='#5a6b62';
+    orbSpeak=false; renderOrb(); jhue('speak_end');
+    if(wakeOn) wakePause(false);
+    if(!silent){ const l='Line closed, sir.'; showLine(l); speak(l); } else status.textContent='';
+  }
+  if(liveBtn) liveBtn.addEventListener('click', ()=>{ audioCtx(); (liveConv||livePC)?stopLive():startLive(); });
+  async function doSee(q){
+    if(!screenLive()){
+      const l="Tap the 🖥 button and pick a window first, sir — then I can see your screen."; showLine(l); return speak(l);
+    }
+    status.textContent='● looking at your screen…';
+    let img=await grabFrame();
+    if(!img){ await new Promise(r=>setTimeout(r,300)); img=await grabFrame(); }   // one retry for a transient miss
+    if(!img){ status.textContent=''; const l="I couldn't get a clear frame, sir — make sure the shared window is visible, then ask again."; showLine(l); return speak(l); }
+    const ack=delayedAck('look', 900);
+    const d=await post('/see',{question:q, image:img, session:SID}, 90000); await ack.settle(); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    lastNote=d.answer; showLine(d.answer); await speak(d.answer);
+  }
+  async function doGuide(q){
+    status.textContent='● finding it on your screen…';
+    let img='';
+    if(screenLive()){                       // shared frame = fallback data; the server prefers its own capture
+      img=await grabFrame();
+      if(!img){ await new Promise(r=>setTimeout(r,300)); img=await grabFrame(); }
+    }
+    const ack=delayedAck('look', 900);
+    const d=await post('/guide',{question:q, image:img}, 90000); await ack.settle(); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    showLine(d.answer); await speak(d.answer);
+  }
+  // ---- model hot-swap: the brain chip under the reactor + the swap itself ----
+  const hexA=(h,a)=>{ const m=/^#?([0-9a-f]{6})$/i.exec(String(h||'').trim());
+    if(!m) return 'rgba(52,211,153,'+a+')';
+    const n=parseInt(m[1],16);
+    return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; };
+  let badgeRetry=0;
+  function setBrainBadge(model, isDefault){
+    // fx.js loads async — on a fresh page with a NON-default brain the first call lands before
+    // it exists, which used to leave the ring in house colours while a themed brain was fitted.
+    if(!(window.__fx&&window.__fx.brainTheme)&&badgeRetry<30){
+      badgeRetry++; setTimeout(()=>setBrainBadge(model,isDefault),300);
+    }
+    try{ window.__fx&&window.__fx.brainTheme&&window.__fx.brainTheme(model, isDefault); }catch(_){}
+    const chip=$('j-brain-chip'); if(!chip) return;
+    // "anthropic/claude-fable-5-1" → "fable 5.1": drop vendor + claude-, drop a dated snapshot
+    // suffix, family/version split becomes a space, remaining version hyphens become dots.
+    const short=String(model||'').split('/').pop().replace(/^claude-/,'')
+                  .replace(/-(\d{8})$/,'').replace(/(\d)-(\d)/g,'$1.$2').replace(/-/g,' ');   // only digit-hyphen-digit is a version dot
+    chip.textContent='◆ '+short+(isDefault?'':' ⚡');
+    // …then push the LISTENING pill clear of it, measured, so the two can never overlap
+    const fitState=()=>{ try{
+      const st=document.getElementById('j-state'), w=chip.getBoundingClientRect().width;
+      if(st&&w) st.style.right=Math.ceil(34+w+12)+'px';
+    }catch(_){} };
+    // getBoundingClientRect above forces layout, so a re-label is measured at its NEW width here.
+    // The one case that isn't settled yet is the webfont: on first paint the chip measures in the
+    // fallback face (62px vs SF Mono's 94px), which is what left the pills touching. Re-fit once
+    // the font lands. (A ResizeObserver on the chip was tried and never fires for this element.)
+    fitState();
+    try{ document.fonts && document.fonts.ready.then(fitState); }catch(_){}
+    // the chip wears whatever suit the reactor is wearing (brains with their own palette tint it)
+    let pal=null; try{ pal=window.__fx&&window.__fx.palette&&window.__fx.palette(); }catch(_){}
+    const themed=pal&&pal.key&&pal.key!=='default'&&pal.key!=='claude'&&pal.key!=='unknown';
+    if(themed){
+      chip.style.color=pal.hud;
+      chip.style.borderColor=hexA(pal.hud,isDefault?.34:.62);
+      chip.style.background=hexA(pal.hud,.09);
+    }else{
+      chip.style.color=isDefault?'#4a8a6f':'#34d399';
+      chip.style.borderColor=isDefault?'rgba(52,211,153,.28)':'rgba(52,211,153,.6)';
+      chip.style.background='rgba(10,22,18,.72)';
+    }
+    chip.title=model;
+  }
+  async function swapBrain(name){
+    status.textContent='● fitting the new brain…';
+    const ack=delayedAck('think', 1200);
+    const d=await post('/model',{model:name}, 60000); await ack.settle(); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    setBrainBadge(d.model, d.default);
+    const l=d.answer||('New brain online, sir — '+d.model+'.'); showLine(l); await speak(l);
+  }
+  async function listBrains(){
+    const m=await fetch('/api/model').then(r=>r.json()).catch(()=>null);
+    if(!m){ const l='I can\'t check the shelf just now, sir.'; showLine(l); return speak(l); }
+    const l='Currently wearing '+m.model.replace(/^claude-/,'')+', sir. On the shelf: '+(m.brains||[]).join(', ')+
+      (m.openrouter?'. And with OpenRouter connected, name nearly any model on Earth and I\'ll fetch it.'
+                   :'. Add an OpenRouter key to config and I can wear nearly any model in existence.');
+    showLine(l); await speak(l);
+  }
+  // ---- voice hot-swap ----
+  async function swapVoice(name){
+    status.textContent='● changing voice…';
+    const d=await post('/voice',{voice:name}, 30000); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    showLine(d.answer); await speak(d.answer);            // confirmation arrives IN the new voice
+  }
+  async function listVoices(){
+    const v=await fetch('/api/voice').then(r=>r.json()).catch(()=>null);
+    if(!v||!(v.voices||[]).length){ const l='The voice wardrobe is empty, sir — check the ElevenLabs key.'; showLine(l); return speak(l); }
+    const l='I\'m in '+(v.name==='default'?'my usual voice':v.name.split(' - ')[0])+', sir. In the wardrobe: '+
+      v.voices.slice(0,12).join(', ')+(v.voices.length>12?', and '+(v.voices.length-12)+' more.':'.');
+    showLine(l); await speak(l);
+  }
+  async function pickEngine(word){
+    const map={'realtime':'openai','real time':'openai','gpt':'openai','openai':'openai',
+               'elevenlabs':'elevenlabs','eleven labs':'elevenlabs','auto':'auto'};
+    const prov=map[(word||'').toLowerCase()]||'auto';
+    const d=await post('/duplex_pref',{provider:prov}, 15000);
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    const l=prov==='auto'?'Engine choice back on auto, sir.'
+      :(d.provider===prov?('Live voice will use '+(prov==='openai'?'GPT Realtime':'ElevenLabs')+', sir.')
+      :('Noted, sir — but '+(prov==='openai'?'GPT Realtime needs an OpenAI key in config':'ElevenLabs live mode needs setup_duplex.py')+' first.'));
+    showLine(l); await speak(l);
+  }
+  // ---- the AI-OS + personality handlers ----
+  async function doOs(spec){
+    status.textContent='● as you wish…';
+    const d=await post('/os',spec, 20000); status.textContent='';
+    const l=d.answer||d.error||'Done, sir.'; showLine(l); await speak(l);
+  }
+  async function doFind(qq){
+    status.textContent='● searching the disk…';
+    const d=await post('/find',{query:qq, open:true}, 20000); status.textContent='';
+    const l=d.answer||d.error||'Nothing, sir.'; showLine(l); await speak(l);
+  }
+  async function doOrganize(dir){
+    status.textContent='● surveying the mess…';
+    const ack=delayedAck('think', 1200);
+    const d=await post('/organize',{dir}, 120000); await ack.settle(); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    if(d.needs_confirm&&d.pending_id) pendingOs={id:d.pending_id};
+    showLine(d.answer); await speak(d.answer);
+  }
+  async function doRenameShots(){
+    status.textContent='● reading your screenshots…';
+    const ack=delayedAck('look', 900);
+    const d=await post('/rename_shots',{}, 180000); await ack.settle(); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    if(d.needs_confirm&&d.pending_id) pendingOs={id:d.pending_id};
+    showLine(d.answer); await speak(d.answer);
+  }
+  async function confirmOs(){
+    const po=pendingOs; pendingOs=null; if(!po) return;
+    status.textContent='● executing…';
+    const d=await post('/os_confirm',{pending_id:po.id}, 60000); status.textContent='';
+    const l=d.answer||d.error||'Done, sir.'; showLine(l); await speak(l);
+  }
+  async function doType(explicit){
+    const text=explicit||stripTags(lastNote||ans.textContent||'');
+    if(!text){ const l='I have nothing drafted to type, sir.'; showLine(l); return speak(l); }
+    const d=await post('/type',{text}, 20000);
+    const l=d.answer||d.error||'Typed, sir.'; showLine(l); await speak(l);
+  }
+  async function doClip(){
+    const d=await post('/clip',{op:'history'}, 15000);
+    if(d.history&&d.history.length){ showLine(d.history.map((h,i)=>(i+1)+'. '+h).join('\n')); await speak(d.answer); return; }
+    showLine(d.answer||''); await speak(d.answer||'');
+  }
+  async function doClipTx(instr){
+    if(!instr){ // "copy that" → put the last answer on the clipboard via transform-free write
+      const text=stripTags(lastNote||ans.textContent||'');
+      if(!text){ const l='Nothing to copy yet, sir.'; showLine(l); return speak(l); }
+      await post('/type',{text:''}).catch(()=>{});   // no-op keepalive
+      osClipWrite(text); const l='On your clipboard, sir.'; showLine(l); return speak(l);
+    }
+    status.textContent='● transforming…';
+    const d=await post('/clip',{op:'transform', instruction:instr}, 60000); status.textContent='';
+    const l=d.answer||d.error||'Done, sir.'; showLine(l); await speak(l);
+  }
+  function osClipWrite(text){ try{ navigator.clipboard.writeText(text); }catch(e){} }
+  async function setDialH(name, val){
+    const d=await post('/persona',{dial:{name, value:val}}, 30000);
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    const l=d.answer||(name+' at '+val+' percent, sir.'); showLine(l); await speak(l);
+  }
+  async function setSkinH(name){
+    status.textContent='● changing costume…';
+    const d=await post('/persona',{skin:name}, 45000); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    setSkinChip(d.label, d.skin);
+    const l=d.answer||(d.label+' online.'); showLine(l); await speak(l);
+  }
+  async function doCandid(qq){
+    await post('/persona',{candid:2}, 15000).catch(()=>{});
+    await answer(qq);                                 // the next answers arrive unfiltered
+  }
+  function setSkinChip(label, skin){
+    let el=$('j-skin-chip');
+    if(!el){ const holder=$('j-brain'); if(!holder) return;
+      el=document.createElement('span'); el.id='j-skin-chip';
+      el.style.cssText='display:inline-block;margin-left:6px;font-family:"SF Mono",ui-monospace,monospace;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#c9a24b;border:1px solid rgba(201,162,75,.4);border-radius:999px;padding:5px 12px;background:rgba(22,18,8,.72);backdrop-filter:blur(6px);';
+      holder.appendChild(el); }
+    if(!skin||skin==='jarvis'){ el.remove(); return; }
+    el.textContent='🎭 '+label;
+  }
+  async function prepCall(task){
+    pendingCall=task;
+    const l='I\'ll handle that call, sir — say "do it" to dial, or "cancel".'; showLine(l); await speak(l);
+  }
+  async function placeCall(task){
+    status.textContent='● dialing…'; const d=await post('/call',{task}, 60000); status.textContent='';
+    if(d.error){ showLine(d.error); return speak(d.error); }
+    showLine(d.answer); await speak(d.answer);
+  }
+
+  // ---- proactive / scheduled briefings ----
+  function setBell(on){
+    bell.dataset.on=on?'1':'';
+    bell.style.background=on?'#2b5847':'#212b30';
+    bell.style.color=on?'#34d399':'#5a6b62';
+  }
+  async function setProactive(on,announce){
+    const s=await post('/proactive',{enabled:on, time:'08:00'}); setBell(s.enabled);
+    if(announce){ const l=s.enabled?`Proactive briefings on, sir — I'll greet you each morning at ${s.time}.`:`Proactive briefings off, sir.`; showLine(l); await speak(l); }
+  }
+  // EYES (V7): a due briefing waits for eye contact — he's at the desk but looking away →
+  // defer, and eyes.js pings attnLook on the look-back so it lands within a second of eye
+  // contact. Capped at 10 min so a briefing can never silently die; EYES off = no gating.
+  let attnWaitSince=0;
+  function attnDefer(){
+    const E=window.__eyes;
+    if(!E || !E.on || E.looking){ attnWaitSince=0; return false; }
+    if(!attnWaitSince) attnWaitSince=Date.now();
+    if(Date.now()-attnWaitSince>600000){ attnWaitSince=0; return false; }
+    return true;
+  }
+  let pollBusy=false;                                    // attnLook can now call this between interval ticks — never overlap two polls (a due reminder must fire once)
+  async function proactivePoll(){
+    if(pollBusy) return; pollBusy=true;
+    try{ await proactivePollInner(); } finally{ pollBusy=false; }
+  }
+  async function proactivePollInner(){
+    try{ const s=await fetch('/api/proactive').then(r=>r.json()); setBell(s.enabled);
+      if(s.enabled && s.due && !busy && !pending && !attnDefer()){ busy=true; try{ await brief(); await post('/proactive_ack',{}); } finally{ busy=false; } }
+    }catch(e){}
+    try{ // due reminders FIRE: card slides in top-right + Jarvis speaks up once
+      const t=await post('/tasks',{}); const now=Math.floor(Date.now()/1000);
+      for(const task of (t.tasks||[])){
+        if(task.due && !task.reminded && task.due<=now){
+          await post('/task_reminded',{ts:task.ts});
+          const r=await post('/inbox_add',{type:'ask', title:'⏰ It\'s time, sir', body:task.text, source:'reminder', priority:'high'});
+          renderInbox(r.cards);
+          if(!busy && !speaking && !liveKind){ const l=`A reminder, sir — ${task.text}.`; showLine(l); speak(l); }
+        }
+      }
+    }catch(e){}
+  }
+  function startProactive(){ proactivePoll(); setInterval(proactivePoll, 60000); inboxPoll(); setInterval(inboxPoll, 30000); }
+  bell.addEventListener('click', ()=>{ if(busy) return; setProactive(bell.dataset.on!=='1', true); });
+
+  async function ask(q){
+    q=(q||'').trim(); if(!q) return;
+    if(window.__reflexAsk) try{ window.__reflexAsk(q); }catch(_){}   // S25: every question shows its reflexes (fire-and-forget, advisory)
+    if(busy){
+      // COMMITTED TASK LAW (2026-08-26): a dispatched task always runs to completion and
+      // delivers — narrating over a long tool run must never derail it. New speech QUEUES
+      // (max 3, consecutive dupes collapse); cancel words clear the QUEUE, not the task.
+      if(/^(?:stop|cancel(?: that| it)?|never ?mind|forget it|stand down)[\s,!.]*$/i.test(q)){
+        askQ.length=0; status.textContent='● queue cleared — current task still finishing, sir'; return; }
+      if(askQ[askQ.length-1]!==q && askQ.length<3){
+        askQ.push(q); status.textContent='● noted, sir — after this task ('+askQ.length+' queued)'; }
+      return;
+    }
+    busy=true; orbThink=true; renderOrb();
+    try{ window.__fx&&window.__fx.think&&window.__fx.think(true); }catch(_){}
+    let keepConvo=true;
+    try{
+      let ed, od, rt;
+      if(wakeOn && ENDCONV.test(q)){ keepConvo=false; awaitingCmd=false; clearTimeout(wakeTimer);
+        const l='Very good, sir. Say "Jarvis" when you need me.'; showLine(l); await speak(l); }
+      else if(progressLive && HUSH.test(q)){ hushProgress();           // "stop updating me" — mute the heartbeat, task runs on
+        const l="Very good, sir — I'll carry on quietly and report the moment it's done."; showLine(l); await speak(l); }
+      else if(RDOFF.test(q)){ localStorage.setItem('jarvis-readback','0');
+        const l="Very good, sir — answers will land on the screen; say 'read it out loud' whenever you want my voice."; showLine(l); await speak(l); }
+      else if(RDON.test(q)){ localStorage.setItem('jarvis-readback','1');
+        const l="Voice read-backs are back on, sir."; showLine(l); await speak(l); }
+      else if(pendingCall && CONFIRM.test(q)){ const t=pendingCall; pendingCall=null; await placeCall(t); }
+      else if(pendingOs && CONFIRM.test(q)) await confirmOs();
+      else if(pending && CONFIRM.test(q)) await confirmAgent();
+      else if((pending||pendingCall||pendingOs) && DENY.test(q)){ pending=null; pendingCall=null; pendingOs=null; const l="Stood down, sir."; showLine(l); await speak(l); }
+      else if(lastLinks.length && OPENLINK.test(q)){                           // "open it" / "open link two"
+        const m=q.match(OPENLINK), idx=Math.min(LINKN[(m[1]||'').toLowerCase()]||0, lastLinks.length-1);
+        const url=lastLinks[idx];
+        let w=null; try{ if(/^https?:\/\//i.test(url)){ w=window.open(url,'_blank'); if(w) w.opener=null; } }catch(e){}   // S23: protocol-checked, no opener
+        if(w){ const l=lastLinks.length>1?`Opening link ${idx+1}, sir.`:'Opening it now, sir.'; showLine(l); await speak(l); }
+        else { showLine(url);                                                  // linkified + clickable — one tap
+          await speak("Your browser insists on a click for pop-ups, sir — the link is highlighted on screen."); }
+      }
+      else if(lastNote && READ.test(q)){                                       // "read it out loud"
+        const n=window.__os&&window.__os.focusNode; const t=(n&&n.p&&n.p.length>40)?n.p:lastNote;
+        showLine(t); await speak(t); }
+      else if(READ.test(q)){                                                   // nothing staged — say so, don't quip "I can't"
+        const l="Nothing pulled up to read just now, sir — ask me for something first."; showLine(l); await speak(l); }
+      else if(MEMSELF.test(q)) await memorize(q.replace(MEMSELF,'').replace(/^[\s:,-]+/,'').trim()||q);
+      else if(ADDNODE.test(q)){ const m=q.match(ADDNODE); await addNode((m[1]||'').trim(), (m[2]||'').trim()); }
+      else if(DRAW.test(q)) await doDraw();
+      else if(CAP.test(q)) await capture(q.replace(CAP,'').trim()||q);
+      else if(TADD.test(q)) await addTask(q.replace(TADD,'').trim()||q);
+      else if(TLIST.test(q)) await listTasks();
+      else if(PROACTOFF.test(q)) await setProactive(false,true);
+      else if(PROACT.test(q)) await setProactive(true,true);
+      else if(DNDOFF.test(q)) await setDnd(false);
+      else if(DND.test(q)) await setDnd(true);
+      else if(STRICTOFF.test(q)) await setStrict(false);
+      else if(STRICTON.test(q)) await setStrict(true);
+      else if(VADOFF.test(q)) await setVadOn(false);
+      else if(VADON.test(q)) await setVadOn(true);
+      else if(POCKETQ.test(q)) await doPocket();
+      else if(QUEUE.test(q)) await readQueue();
+      else if(RECALL.test(q)) await doRecall(q);
+      else if(VOICELIST.test(q)) await listVoices();
+      else if(VOICERESET.test(q)) await swapVoice('default');
+      else if(VENGINE.test(q)) await pickEngine(q.match(VENGINE)[1]);
+      else if(VOICESWAP.test(q)){ const m=q.match(VOICESWAP); await swapVoice((m[1]||m[2]||'').trim()); }
+      else if(BRAINLIST.test(q)) await listBrains();
+      else if(BRAINRESET.test(q)) await swapBrain('default');
+      else if(BRAIN.test(q)) await swapBrain(q.match(BRAIN)[1]);
+      else if(DIAL.test(q)){ const m=q.match(DIAL); await setDialH(m[1].toLowerCase(), m[2]); }
+      else if(SKINSW.test(q)){ const m=q.match(SKINSW); await setSkinH((m[1]||m[2]||'').toLowerCase()); }
+      else if(CANDID.test(q)) await doCandid(q);
+      else if((rt=(window.__jarvisRoutes||[]).find(r=>{try{return r.re.test(q);}catch(_){return false;}}))) await rt.handler(q, q.match(rt.re));   // fx.js / missions.js voice routes
+      else if((od=parseOs(q))) await doOs(od);
+      else if(ORGANIZE.test(q)) await doOrganize(q.match(ORGANIZE)[1]);
+      else if(RENSHOTS.test(q)) await doRenameShots();
+      else if(TYPEIT.test(q)){ const m=q.match(TYPEIT); await doType(((m&&m[1])||'').trim()); }
+      else if(CLIPQ.test(q)) await doClip();
+      else if(CLIPTX.test(q)){ const m=q.match(CLIPTX); await doClipTx(((m&&m[1])||'').trim()); }
+      else if(FINDFILE.test(q)) await doFind(q.match(FINDFILE)[1]);
+      else if(PULSE.test(q)) await doPulse();
+      else if(BRIEF.test(q)) await brief();
+      else if(INBOX.test(q)) await doInbox();
+      else if(screenLive() && (RESEARCH.test(q) || (/\b(?:find|dig|research|check)\b/i.test(q) && /\bonline\b|\bon the (?:web|internet)\b/i.test(q)))
+              && !/\b(vidiq|semrush|(?:my|the|your) (?:brain|notes?|graph|vault|calendar|schedule|inbox|e-?mails?))\b/i.test(q))
+        await doResearchScreen(q);                      // "research this" mid-share: web search, grounded by the screen — must beat SEE's "this"
+      else if(GUIDE.test(q)) await doGuide(q);
+      else if(SEE.test(q)) await doSee(q);   // loose screen-ish phrasing now rides /chat, which carries a frame while sharing AND remembers the conversation
+      else if(CALL.test(q)) await prepCall(q);
+      else if((ed=parseEdit(q))) await edit(ed.target, ed.text);
+      else if(RESEARCH.test(q) && !/\b(vidiq|semrush|(?:my|the|your) (?:brain|notes?|graph|vault|calendar|schedule|inbox|e-?mails?))\b/i.test(q)) await doResearch(q);   // web research beats the agent path; notes/calendar stay local
+      else if(AGENT.test(q)) await runAgent(q);
+      else if(NAV.test(q)) await navigate(q.replace(NAV,'').trim());
+      else await answer(q);
+    }catch(e){ status.textContent='error: '+e.message; }
+    busy=false; orbThink=false; renderOrb();
+    try{ window.__fx&&window.__fx.think&&window.__fx.think(false); }catch(_){}
+    if(askQ.length){ const n=askQ.shift();               // committed-task law: drain the queue in order
+      status.textContent='● as promised, sir — your next request'; setTimeout(()=>ask(n), 700); }
+    // hands-free: stay in the conversation so you can reply without saying "Jarvis" again
+    if(wakeOn && keepConvo) armFollowup(); else if(wakeOn) status.textContent=IDLE;
+  }
+  window.__jarvisAsk=ask;
+  // bridge for the V5 add-on modules (fx.js visual layer + missions.js agent bay) — they register
+  // voice routes in window.__jarvisRoutes [{re, handler}] and use these helpers to speak/post.
+  window.__jarvis={ post, ask, session:SID, ack:delayedAck, progress:progressAck, progressHush:hushProgress, speakable, showLine,
+    listen:()=>armFollowup(),                            // spoken questions arm a no-wake-word answer window (calendar offer etc.)
+    hearing:()=>wakeOn,                                  // S19h: is hands-free (the 👂) live?
+    hear:(quiet)=>{ try{ if(!wakeOn){ if(quiet) wakeQuiet=true; wake.click(); } return wakeOn; }catch(_){ return false; } },   // S21 (his call, reverses S19s): organs open the ear; quiet = the organ speaks ONE combined line
+    say:async t=>{ showLine(t); await speak(t); },
+    voice:t=>speak(t),                                   // speak WITHOUT touching the answer panel (screen-only read-back mode)
+    status:t=>{ try{ status.textContent=t; }catch(_){} },
+    setLastNote:t=>{ lastNote=String(t||''); },
+    attnHold,                                            // EYES: pause/resume the playing sentence on look-away/look-back
+    attnLook:()=>{ try{ proactivePoll(); }catch(_){} },  // EYES: eye contact returned — a deferred briefing can land now
+    confirmPending:()=>!!(pending||pendingCall||pendingOs) };  // EYES: nod/shake only ever fire while something awaits a yes
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ const q=input.value; input.value=''; ask(q);} });
+
+  // ---- voice: push-to-talk mic + hands-free TWO-PHASE wake word (mutually exclusive) ----
+  // Say "Jarvis" (alone, or "hey Jarvis" / "Jarvis AI") -> Jarvis answers "Yes, sir?" and then
+  // listens for your command. You can also say it in one breath: "Jarvis, what is CiteVue".
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  let wakeRec=null, wakeOn=false, wakePaused=false, micActive=false, awaitingCmd=false, wakeTimer=null, speaking=false, spoken='';
+  // S19p — the FINISH WINDOW: buffered finals wait FINISH_MS for the rest of the thought
+  const FINISH_MS=0;      // 2026-09-01, his call: back to pre-S19p INSTANT dispatch (1400 felt slow)
+  let finBuf='', finTimer=null;
+  function armFinish(){
+    clearTimeout(finTimer);
+    status.textContent='● listening, sir…';
+    finTimer=setTimeout(()=>{
+      const c=finBuf.replace(STRIP_WAKE,'').trim(); finBuf='';
+      if(c) ask(c); else status.textContent=IDLE;
+    }, FINISH_MS);
+  }
+  function finishDispatch(txt){
+    if(SHORTCMD.test(txt) && !finBuf){                  // stop/wait/pause stay INSTANT
+      const c=txt.replace(STRIP_WAKE,'').trim(); status.textContent=IDLE; if(c) ask(c); return;
+    }
+    finBuf=(finBuf?finBuf+' ':'')+txt;
+    armFinish();
+  }
+  // screen share = open conversation: sharing auto-engages listening (restored after), and the
+  // follow-up window stays hot for the whole share so he can just talk — no wake word needed.
+  let shareAutoWake=false, wakeQuiet=false;
+  // strict mode: NEVER listen without the wake word (no follow-up window). Toggled by voice, persisted.
+  let strict=false; try{ strict=localStorage.getItem('jarvis-strict')==='1'; }catch(e){}
+  // Chrome reports how sure it is of each finalized transcription — noise hallucinations score low.
+  // null = engine didn't say (don't block on it); a number = gate on it.
+  function confOf(res){ const c=res&&res[0]&&res[0].confidence; return (typeof c==='number'&&c>0)?c:null; }
+  // one-word replies that are legitimate on their own (everything else needs 2+ words or high confidence)
+  const SHORTCMD=/^\s*(stop|wait|cancel|yes|no|nope|do it|send it|go ahead|read it|thank you|thanks|that'?s all|never ?mind|goodbye)\b/i;
+  const WAKE=/\b(?:hey |okay |ok )?(?:jarvis|jervis)(?:\s+a\.?\s?i\.?)?\b[\s,.]*(.*)$/i;   // name (+optional "AI") + optional command
+  const STRIP_WAKE=/^\s*(?:hey |okay |ok )?(?:jarvis|jervis)(?:\s+a\.?\s?i\.?)?[\s,.]*/i;
+  const IDLE='● say "Jarvis…"';
+  // barge-in: cut Jarvis off mid-sentence by saying "Jarvis…" or "stop / wait / hold on …"
+  const BARGE=/(?:^|\s)(?:hey )?jarvis\b|^\s*(?:stop|wait|hold on|hang on|cancel|actually|pause|one sec(?:ond)?)\b/i;
+  const BARGE_LEAD=/^\s*(?:stop|wait|hold on|hang on|cancel|actually|pause|one sec(?:ond)?)[\s,.!]*/i;
+  function isEcho(heard){                       // ignore the recogniser hearing Jarvis's own TTS
+    if(!spoken) return false;
+    const h=heard.toLowerCase().replace(/[^a-z' ]/g,' ').split(/\s+/).filter(w=>w.length>2);
+    if(!h.length) return true;
+    const s=spoken.toLowerCase(); return h.filter(w=>s.indexOf(w)>=0).length/h.length > 0.5; }
+  function whenIdle(fn,t){ if(busy&&(t||0)<150) setTimeout(()=>whenIdle(fn,(t||0)+1),200); else fn(); }   // wait up to 30s — chunked replies hold `busy` longer, and a barged command must NEVER be dropped (the old 5s cap silently ate "permission granted")
+  let barged=0;                                  // ts of an interim voice-cut; the final result completes it
+  function cutVoice(){                           // stop Jarvis mid-sentence (audio only)
+    console.debug('[voice] cutVoice — speech killed, queued chunks dropped');
+    speakSeq++;                                  // a chunked read in progress abandons its remaining chunks
+    try{ if(window.speechSynthesis && speaking){ speechSynthesis.cancel(); speechSynthesis.resume(); } }catch(e){}   // resume(): Chrome keeps `paused` across cancel() — without it the synth goes mute for good
+    if(curAudio){ const a=curAudio; curAudio=null; try{a.pause();}catch(e){} reactStop(); try{a.dispatchEvent(new Event('ended'));}catch(e){} }
+    speaking=false;
+  }
+  function bargeIn(txt){
+    cutVoice(); barged=0; status.textContent='● yes, sir?';
+    const cmd=txt.replace(BARGE_LEAD,'').replace(STRIP_WAKE,'').trim();
+    if(cmd.length>1) ask(cmd); }
+  // ---------- instant interrupt (VAD) — ANY voice cuts Jarvis mid-sentence, conference-app style ----------
+  // The wake recogniser transcribes in parallel but its first result takes ~1-2s; this RMS loop
+  // PAUSES playback ~80ms after voice onset (echoCancellation strips Jarvis's own speaker audio).
+  // Real words then COMMIT the cut and run as the command; a cough/door-slam auto-RESUMES the
+  // sentence and raises the trigger threshold — so noise can no longer silence him for good.
+  const vad={stream:null, raf:0, base:0.008, hot:0, mult:2.6, deafUntil:0, hold:null,
+             worker:null, ticks:0, lastStep:0,
+             on:(function(){ try{ return localStorage.getItem('jarvis-vad')!=='0'; }catch(e){ return true; } })()};
+  function vadStart(){
+    if(vad.stream || !vad.on || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}})
+      .then(s=>{
+        if(!wakeOn || !vad.on || vad.stream){ try{ s.getTracks().forEach(t=>t.stop()); }catch(e){} return; }   // toggled off, or a second click raced us
+        const c=audioCtx(); if(!c){ try{ s.getTracks().forEach(t=>t.stop()); }catch(e){} return; }
+        vad.stream=s; vad.mult=2.6;                        // fresh session, fresh sensitivity
+        const an=c.createAnalyser(); an.fftSize=512;
+        c.createMediaStreamSource(s).connect(an);          // analyser only — never to the speakers
+        const buf=new Uint8Array(an.fftSize);
+        const step=()=>{
+          if(!vad.stream) return;
+          const now=performance.now();
+          vad.ticks++; vad.lastStep=now;
+          an.getByteTimeDomainData(buf);
+          let sum=0; for(let i=0;i<buf.length;i++){ const dv=(buf[i]-128)/128; sum+=dv*dv; }
+          const rms=Math.sqrt(sum/buf.length), gate=Math.max(0.02, vad.base*vad.mult);
+          if(rms<gate){ vad.base=vad.base*0.95+rms*0.05; vad.hot=0; }   // learn the room while it's quiet
+          else if(wakeOn && speaking && !vad.hold && !micActive && !liveKind && now>vad.deafUntil){
+            if(++vad.hot>=5){ vad.hot=0; vadCut(); }       // ~5 hot ticks of sustained voice → pause him NOW
+          } else vad.hot=0;
+        };
+        // rAF drives the loop while the tab is visible — but it FREEZES when the tab is hidden or
+        // occluded, which is EXACTLY the screen-share case (the shared app sits on top of Chrome
+        // and the ear went deaf). A Web-Worker metronome (workers dodge Chrome's tab throttling —
+        // the fx.js scheduler learned this the hard way) steps whenever the rAF chain has stalled
+        // >38ms, for ANY reason. No visibility bookkeeping — the stall itself is the signal.
+        const pump=()=>{ if(!vad.stream) return; step(); vad.raf=requestAnimationFrame(pump); };
+        try{
+          const blob=new Blob(["setInterval(function(){postMessage(1)},40)"],{type:'text/javascript'});
+          vad.worker=new Worker(URL.createObjectURL(blob));
+          vad.worker.onmessage=()=>{ if(vad.stream && performance.now()-vad.lastStep>=38) step(); };
+        }catch(e){}
+        pump();
+      }).catch(()=>{});                                    // no second mic stream → barge phrases still work
+  }
+  function vadStop(){ cancelAnimationFrame(vad.raf); vad.raf=0;
+    if(vad.worker){ try{ vad.worker.terminate(); }catch(e){} vad.worker=null; }
+    if(vad.hold) vadResume();                              // never strand a paused sentence
+    try{ (vad.stream?vad.stream.getTracks():[]).forEach(t=>t.stop()); }catch(e){} vad.stream=null; }
+  function vadCut(){                                       // pause, don't kill — noise gets his voice back
+    console.debug('[vad] floor cut — playback paused, waiting for words');
+    const a=curAudio;
+    try{ if(a) a.pause(); }catch(e){}
+    try{ if(!a && window.speechSynthesis && speaking) speechSynthesis.pause(); }catch(e){}
+    vad.hold={a, t:setTimeout(vadResume, 3200)};
+    status.textContent='● yes, sir?';
+  }
+  function vadResume(){                                    // no words arrived — false alarm, finish the sentence
+    const h=vad.hold; if(!h) return; clearTimeout(h.t); vad.hold=null;
+    vad.mult=Math.min(6, vad.mult*1.5);                    // demand a louder signal next time
+    console.debug('[vad] false alarm — resuming speech, threshold ×'+vad.mult.toFixed(1));
+    try{ if(h.a){ if(curAudio===h.a && !eyesHold) h.a.play(); }         // only replay a sentence we still own — and never while a look-away holds it
+         else if(window.speechSynthesis && speaking && !eyesHold) speechSynthesis.resume(); }catch(e){}
+    if(wakeOn && !speaking) status.textContent=IDLE; else if(speaking) status.textContent='';
+  }
+  function vadHoldClear(){                                 // speech ended while held — never resume an orphan
+    const h=vad.hold; if(!h) return; clearTimeout(h.t); vad.hold=null;
+    if(!h.a){ try{ speechSynthesis.cancel(); speechSynthesis.resume(); }catch(e){} }   // kill the paused utterance
+  }
+  function vadCommit(txt){                                 // real words — kill the sentence, run the command
+    console.debug('[vad] commit — interrupt ran as command:', txt);
+    const h=vad.hold; if(h) clearTimeout(h.t); vad.hold=null;
+    vad.mult=2.6; vad.deafUntil=performance.now()+1200;    // real interrupt: reset sensitivity, swallow the tail
+    cutVoice(); barged=0; clearTimeout(wakeTimer); awaitingCmd=false;
+    const cmd=txt.replace(BARGE_LEAD,'').replace(STRIP_WAKE,'').trim();
+    status.textContent='● yes, sir?';
+    if(cmd.length>1) ask(cmd); else if(wakeOn) status.textContent=IDLE;
+  }
+  async function setVadOn(on){ vad.on=on; try{ localStorage.setItem('jarvis-vad', on?'1':'0'); }catch(e){}
+    if(on){ if(wakeOn) vadStart(); } else vadStop();
+    const l=on?"Instant interrupt armed, sir — speak over me and I shall stop mid-sentence."
+             :"As you wish, sir — I shall finish my sentences unless you say my name or 'stop'.";
+    showLine(l); await speak(l); }
+  window.__jarvisVad=()=>({on:vad.on, live:!!vad.stream, hold:!!vad.hold, mult:vad.mult, base:vad.base, ticks:vad.ticks});
+  function wakeStart(){ if(!SR||!wakeOn||wakePaused||micActive||!wakeRec) return; try{ wakeRec.start(); }catch(e){} }
+  function wakePause(p){ wakePaused=p; if(p){ if(wakeRec){ try{wakeRec.stop();}catch(e){} } } else { wakeStart(); } }
+  function armCmd(){ awaitingCmd=true; renderOrb(); status.textContent='● yes? — say your command';
+    try{ window.__fx&&window.__fx.wake&&window.__fx.wake(); }catch(_){}
+    clearTimeout(wakeTimer); wakeTimer=setTimeout(()=>{ awaitingCmd=false; renderOrb(); if(wakeOn) status.textContent=IDLE; }, 10000); }
+  // after a reply, keep listening for a follow-up (no wake word needed) for a short window
+  const FOLLOWUP_MS=14000;
+  function armFollowup(){ if(!SR||!wakeOn) return;
+    if(strict){ awaitingCmd=false; renderOrb(); status.textContent=IDLE; return; }   // strict: name required, always
+    awaitingCmd=true; renderOrb(); status.textContent='● listening, sir…';
+    clearTimeout(wakeTimer);
+    if(screenLive() || window.__focusHot || window.__eyesHot) return;   // sharing, a focus session, OR open EYES = open conversation: stay hot
+    wakeTimer=setTimeout(()=>{ awaitingCmd=false; renderOrb(); if(wakeOn) status.textContent=IDLE; }, FOLLOWUP_MS); }
+  if(SR){
+    function micErr(code){ return (code==='not-allowed'||code==='service-not-allowed') ? 'mic blocked, sir — click here to test & fix'
+        : code==='no-speech' ? "didn't catch that, sir — tap 🎙 and speak"
+        : code==='audio-capture' ? 'no microphone found, sir'
+        : code==='network' ? 'speech service offline — check your connection'
+        : 'mic: '+(code||'error'); }
+    // --- mic self-heal: a Chrome "Allow" doesn't restart a dead recogniser — this does. ---
+    let micWasBlocked=false, recovering=false;
+    async function micLevelProbe(ms){                    // capture for ~ms, return peak level 0..1 (-1 = capture failed)
+      let st; try{ st=await navigator.mediaDevices.getUserMedia({audio:true}); }catch(e){ return -1; }
+      try{
+        const ac=new (window.AudioContext||window.webkitAudioContext)();
+        const an=ac.createAnalyser(); an.fftSize=512;
+        ac.createMediaStreamSource(st).connect(an);
+        const buf=new Uint8Array(an.fftSize); let peak=0; const t0=Date.now();
+        await new Promise(res=>{(function tick(){ an.getByteTimeDomainData(buf);
+          for(let i=0;i<buf.length;i++){ const d=Math.abs(buf[i]-128)/128; if(d>peak) peak=d; }
+          (Date.now()-t0>ms) ? res() : setTimeout(tick,50); })();});
+        try{ac.close();}catch(e){}
+        return peak;
+      }catch(e){ return -1; }
+      finally{ try{st.getTracks().forEach(t=>t.stop());}catch(e){} }
+    }
+    async function micRecover(){                         // test the pipe end-to-end, say what's wrong, re-arm if healthy
+      if(recovering) return; recovering=true;
+      status.style.cursor=''; status.textContent='● testing the mic — say something, sir…';
+      const peak=await micLevelProbe(3500);
+      recovering=false;
+      if(peak<0){ status.style.cursor='pointer';
+        status.textContent='mic blocked by Chrome — padlock icon by the URL → allow Microphone (then I recover on my own)'; return; }
+      if(peak<0.02){ status.style.cursor='pointer';
+        status.textContent='mic is allowed but I hear SILENCE — macOS is muting Chrome or the wrong input is picked: System Settings → Privacy & Security → Microphone → enable Chrome, and chrome://settings/content/microphone → pick your real mic'; return; }
+      micWasBlocked=false; status.textContent='● mic healthy, sir';
+      if(!wakeOn) wake.click(); else { try{wakeRec&&wakeRec.start();}catch(e){} setTimeout(()=>{ if(wakeOn) status.textContent=IDLE; },1200); }
+    }
+    try{ navigator.permissions.query({name:'microphone'}).then(p=>{   // the moment Allow is clicked, heal without a reload
+      p.onchange=()=>{ if(p.state==='granted'&&micWasBlocked) micRecover(); }; });}catch(e){}
+    status.style.pointerEvents='auto';
+    status.addEventListener('click', ()=>{ if(/mic|silen|blocked/i.test(status.textContent)&&!recovering) micRecover(); });
+    function startMic(){
+      let r; try{ r=new SR(); }catch(e){ micActive=false; renderOrb(); wakePause(false); return; }
+      r.lang=window.__jarvisEar||'en-US'; r.interimResults=false; r.maxAlternatives=1;
+      r.onstart=()=>{ mic.style.background='#5c3038'; mic.style.color='#fb7185'; status.textContent='● listening…'; renderOrb(); };
+      r.onresult=e=>ask(e.results[0][0].transcript);
+      r.onerror=e=>{ status.textContent=micErr(e&&e.error); micActive=false;
+        if(e&&(e.error==='not-allowed'||e.error==='service-not-allowed')){ micWasBlocked=true; status.style.cursor='pointer'; } };
+      r.onend=()=>{ mic.style.background='#27423a'; mic.style.color='#34d399';
+        if(status.textContent==='● listening…') status.textContent='';
+        micActive=false; renderOrb(); wakePause(false); };
+      try{ r.start(); }catch(e){ micActive=false; renderOrb(); wakePause(false); status.textContent='mic busy — tap again'; }
+    }
+    mic.addEventListener('click', ()=>{
+      audioCtx();                                                          // resume audio on this user gesture
+      cutVoice();                                                          // interrupt Jarvis mid-sentence (and drop any queued chunks)
+      if(micActive) return;
+      if(busy){ status.textContent='● working — your next ask will queue, sir'; }   // mic opens during a task; the utterance queues via ask()
+      micActive=true; renderOrb();
+      const wasWake = wakeOn && wakeRec;
+      wakePause(true);                                                     // free the mic from the wake recogniser
+      if(wasWake) setTimeout(startMic, 230); else startMic();              // small gap so Chrome releases the mic
+    });
+    wake.addEventListener('click', ()=>{
+      wakeOn=!wakeOn; renderOrb();
+      if(wakeOn){
+        wake.style.background='#2b5847'; wake.style.color='#34d399'; status.textContent=IDLE; awaitingCmd=false;
+        wakeRec=new SR(); wakeRec.lang=window.__jarvisEar||'en-US'; wakeRec.continuous=true; wakeRec.interimResults=true; wakeRec.maxAlternatives=1;
+        wakeRec.onresult=e=>{
+          const res=e.results[e.results.length-1];
+          const txt=(res[0].transcript||'').trim();
+          const fin=!!res.isFinal;
+          const conf=confOf(res);                            // finals only; interims report nothing useful
+          if(vad.hold){                                      // the VAD paused him — do these words commit the cut?
+            if(isEcho(txt)) return;                          // his own voice leaking through the pause
+            if(!fin){ clearTimeout(vad.hold.t); vad.hold.t=setTimeout(vadResume, 3200); return; }   // words coming — keep holding
+            const w=txt.split(/\s+/).filter(x=>x.length>1).length;
+            if((conf!=null && conf<0.4) || (w<2 && !SHORTCMD.test(txt) && !WAKE.test(txt))) return vadResume();
+            if(strict && !WAKE.test(txt) && !BARGE.test(txt) && !SHORTCMD.test(txt)) return vadResume();   // strict keeps its promise: only his name (or stop/wait) commits
+            return vadCommit(txt);
+          }
+          // Barge-in fallback (VAD off/denied): an explicit interrupt still cuts him — "Jarvis…" or "stop/wait/hold on…".
+          if(speaking){
+            if(isEcho(txt) || !BARGE.test(txt)) return;
+            if(fin) return bargeIn(txt);
+            cutVoice(); barged=Date.now(); status.textContent='● yes, sir?';   // cut NOW, command follows
+            return;
+          }
+          if(window.__reflexHear && !isEcho(txt)){ try{ if(window.__reflexHear(txt, fin, {awaitingCmd, strict, wake:WAKE.test(txt)})) return; }catch(_){} }   // 2026-09-24: his own Jarvis's voice never feeds the reflex   // S25: the reflex watches every partial; true = it already dispatched this utterance
+          // S19p ("it doesn't let me finish"): a mid-thought pause finalizes early — so finals
+          // BUFFER for FINISH_MS and later speech (interim or final) re-arms the window; the
+          // pause that truly ends the thought sends the combined command. stop/wait stay instant.
+          if(finBuf && !fin && !isEcho(txt)){ armFinish(); return; }   // still talking — hold the window
+          if(!fin) return;                                   // below here: finalized phrases only
+          if(finBuf && !isEcho(txt)){ finBuf+=' '+txt; armFinish(); return; }   // continuation — append
+          const words=txt.split(/\s+/).filter(w=>w.length>1).length;
+          if(barged && Date.now()-barged<8000){              // the speech that interrupted him
+            if(conf!=null && conf<0.4){ barged=0; return; }  // …unless it was noise all along
+            barged=0; clearTimeout(wakeTimer); awaitingCmd=false;
+            const cmd=txt.replace(BARGE_LEAD,'').replace(STRIP_WAKE,'').trim();
+            if(cmd.length>1) ask(cmd);
+            return;
+          }
+          if(busy) return;
+          if(awaitingCmd){                                  // phase 2: post-"Jarvis" command, or the follow-up window
+            if(conf!=null && conf<0.5) return;              // heard *something*, but not clearly → stay quiet
+            if(words<2 && !SHORTCMD.test(txt) && !WAKE.test(txt) && !(conf!=null&&conf>=0.7)) return;  // one-word noise
+            awaitingCmd=false; clearTimeout(wakeTimer);
+            finishDispatch(txt); return;
+          }
+          const m=txt.match(WAKE);
+          if(!m){ if(window.__reflexFilming) try{ window.__reflexFilming(txt, conf); }catch(_){} return; }   // S25 filming mode: no name → Jev decides whether that was for Jarvis
+          if(conf!=null && conf<0.4) return;                 // a hallucinated "Jarvis" from noise scores low
+          const cmd=(m[1]||'').trim();
+          if(cmd) finishDispatch(cmd);                       // "Jarvis, <command>" — let him finish the breath
+          else { armCmd(); speak('Yes, sir?'); }             // just the name -> acknowledge, then listen
+        };
+        wakeRec.onerror=e=>{ if(e&&(e.error==='not-allowed'||e.error==='service-not-allowed')){
+          micWasBlocked=true; status.style.cursor='pointer';
+          status.textContent='mic blocked, sir — click here to test & fix'; wakeOn=false; renderOrb();
+          wake.style.background='#212b30'; wake.style.color='#5a6b62'; vadStop(); } };   // no recogniser → no commit path: kill the VAD too
+        wakeRec.onend=()=>{ if(wakeOn && !wakePaused && !micActive){ try{wakeRec.lang=window.__jarvisEar||'en-US'; wakeRec.start();}catch(e){} } };
+        wakePaused=false; micActive=false; try{wakeRec.start();}catch(e){}
+        vadStart();                                        // second mic stream: the instant-interrupt floor cut
+        if(wakeQuiet) wakeQuiet=false;                     // the share flow speaks its own combined line
+        else speak('Listening mode activated, sir.');        // S21 (his call): the short line, not the spiel
+      } else {
+        wake.style.background='#212b30'; wake.style.color='#5a6b62'; status.textContent=''; awaitingCmd=false; clearTimeout(wakeTimer);
+        finBuf=''; clearTimeout(finTimer);               // a half-finished thought dies with the ears
+        if(wakeRec){ try{wakeRec.stop();}catch(e){} wakeRec=null; }
+        vadStop();
+      }
+    });
+  } else { mic.dataset.tip='Voice needs Chrome or Edge'; mic.style.opacity=.4; wake.style.display='none'; }
+})();
+</script>
+<!-- V5 add-on bays: each module is optional — a missing/broken file never breaks the core viewer -->
+<script type="module" src="fx.js?v=2"></script>
+<script type="module" src="missions.js?v=6"></script>
+<script type="module" src="lang.js?v=1"></script>
+<script type="module" src="tools.js?v=1"></script>
+<script type="module" src="hands.js?v=1"></script>
+<script type="module" src="holo.js?v=1"></script>
+<script type="module" src="eyes.js?v=1"></script>
+<script type="module" src="focus.js?v=1"></script>
+<script type="module" src="calls.js?v=1"></script>
+<script type="module" src="reflex.js?v=8"></script>
+<script type="module" src="teardown.js?v=16"></script>
+</body>
+</html>

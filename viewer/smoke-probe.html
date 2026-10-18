@@ -1,0 +1,7 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>smoke probe</title></head>
+<body style="background:#0b1612;color:#cfe9df;font:14px ui-monospace,monospace;padding:24px">
+preflight smoke probe — three planted errors (a missing script, a console error, an exception)
+<script src="missing-planted.js"></script>
+<script>console.error("planted console error"); setTimeout(function(){ throw new Error("planted exception"); }, 50);</script>
+</body></html>

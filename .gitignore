@@ -1,0 +1,31 @@
+# --- Secrets & live config (NEVER commit) ---
+config.json
+jarvis-duplex.json
+jarvis-tools.json
+call-safe-pack.md
+*.key
+*.pem
+.env
+.env.*
+
+# --- Runtime state / generated data ---
+jarvis-inbox.json
+jarvis-episodes.jsonl
+jarvis-lang.json
+*.log
+agent-workspace/
+
+# --- Caches & backups ---
+.logo-cache/
+.sir-backup-*/
+.viewer-sir-backup-*/
+__pycache__/
+*.pyc
+*.pyo
+
+# --- OS cruft ---
+.DS_Store
+Thumbs.db
+
+# stray inline backups
+*.sir-backup-*
